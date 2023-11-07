@@ -1,0 +1,30 @@
+{
+  "groups": [
+    {
+      "name": "mubel",
+      "type": "io.mubel.spring.MubelProperties",
+      "sourceType": "io.mubel.spring.MubelProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "mubel.event-store-id",
+      "type": "java.lang.String",
+      "description": "The event store id to use.",
+      "sourceType": "io.mubel.spring.MubelProperties"
+    },
+    {
+      "name": "mubel.id-generator",
+      "type": "io.mubel.spring.MubelProperties$IdGenerationStrategy",
+      "description": "The id generation strategy to use. Default TIMEBASED.",
+      "sourceType": "io.mubel.spring.MubelProperties"
+    },
+    {
+      "name": "mubel.uri",
+      "type": "java.net.URI",
+      "description": "The mubel uri to connect to.",
+      "sourceType": "io.mubel.spring.MubelProperties"
+    }
+  ],
+  "hints": []
+}
