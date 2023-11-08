@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.mubel.api.grpc";
+
+import "messages.proto";
+
+package events;
+
+service EventService {
+  // Append new events to an event store
+  rpc append (AppendRequest) returns (AppendAck) {}
+  rpc get(GetEventsRequest) returns (GetEventsResponse) {}
+  // Provisions a new event store. The call will fail if the event store already exists.
+  rpc provision (ProvisionEventStoreRequest) returns (EventStoreDetails) {}
+  rpc subscribe (SubscribeRequest) returns (stream EventData) {}
+  rpc drop (DropEventStoreRequest) returns (DropEventStoreResponse) {}
+  rpc serverInfo (GetServiceInfoRequest) returns (ServiceInfoResponse) {}
+}
