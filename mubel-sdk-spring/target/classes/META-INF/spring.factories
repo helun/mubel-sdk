@@ -1,1 +1,0 @@
-org.springframework.boot.autoconfigure.service.connection.ConnectionDetailsFactory=io.mubel.spring.MubelContainerDetailsFactory

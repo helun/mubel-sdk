@@ -1,9 +1,0 @@
-io/mubel/fixtures/TestCommands.class
-io/mubel/fixtures/TestAggregate.class
-io/mubel/fixtures/TestEvents$EventB.class
-io/mubel/fixtures/TestEvents.class
-io/mubel/fixtures/TestCommands$CommandA.class
-io/mubel/test/AggregateFixtureTest.class
-io/mubel/fixtures/TestCommands$ReturnNullCommand.class
-io/mubel/fixtures/TestEvents$EventA.class
-io/mubel/fixtures/TestCommands$EmptyResultCommand.class

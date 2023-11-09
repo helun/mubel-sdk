@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: io.mubel.spring.MubelAutoConfigurationTest
--------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.999 s - in io.mubel.spring.MubelAutoConfigurationTest
