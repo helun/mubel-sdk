@@ -1,6 +1,5 @@
 package io.mubel.spring;
 
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -16,7 +15,6 @@ public class MubelProperties {
     /**
      * The event store id to use.
      */
-    @NotBlank
     private String eventStoreId;
     /**
      * The id generation strategy to use. Default TIMEBASED.

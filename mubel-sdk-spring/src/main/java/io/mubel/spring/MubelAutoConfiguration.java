@@ -75,6 +75,7 @@ public class MubelAutoConfiguration {
 
     @Bean(initMethod = "provision")
     @ConditionalOnMissingBean
+    @ConditionalOnBean(MubelClient.class)
     public EventStoreProvisioner eventStoreProvisioner(
             MubelProperties properties,
             MubelClient eventsClient) {
