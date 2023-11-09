@@ -11,7 +11,8 @@ import java.util.stream.Stream;
 record AggregateClassInfo(
         Class<?> aggregateClass,
         Constructor<?> constructor,
-        Map<Class<?>, Optional<Method>> handlers
+        Map<Class<?>, Optional<Method>> commandHandlers,
+        Map<Class<?>, Optional<Method>> eventHandlers
 ) {
     static AggregateClassInfo create(
             Class<?> aggregateClass) {
@@ -19,12 +20,13 @@ record AggregateClassInfo(
                 aggregateClass,
                 AggregateClassUtil.findConstructor(aggregateClass)
                         .orElseThrow(() -> new NoSuchElementException("No public no-args constructor found for " + aggregateClass.getName())),
+                new ConcurrentHashMap<>(),
                 new ConcurrentHashMap<>()
         );
     }
 
     Optional<Method> findCommandHandler(Class<?> commandClass) {
-        return handlers.computeIfAbsent(
+        return commandHandlers.computeIfAbsent(
                 commandClass,
                 this::doFindCommandHandler
         );
@@ -42,7 +44,7 @@ record AggregateClassInfo(
     }
 
     Optional<Method> findEventHandler(Class<?> eventClass) {
-        return handlers.computeIfAbsent(
+        return eventHandlers.computeIfAbsent(
                 eventClass,
                 this::doFindEventHandler
         );

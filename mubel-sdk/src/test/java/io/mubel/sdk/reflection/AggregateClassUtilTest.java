@@ -18,6 +18,35 @@ class AggregateClassUtilTest {
     }
 
     @Test
+    void findCommandHandlers() {
+        assertThat(AggregateClassUtil.findCommandHandler(
+                TestAggregate.class,
+                TestCommands.CommandA.class)
+        ).isNotEmpty();
+        assertThat(AggregateClassUtil.findCommandHandler(
+                TestAggregate.class,
+                TestCommands.CommandB.class)
+        ).isNotEmpty();
+        assertThat(AggregateClassUtil.findCommandHandler(
+                TestAggregate.class,
+                TestCommands.CommandA.class)
+        ).isNotEmpty();
+    }
+
+    @Test
+    void findingEventHandlerAndCommandHandlerShouldNotAffectEachOther() {
+        assertThat(AggregateClassUtil.findEventHandler(
+                TestAggregate.class,
+                TestCommands.CommandA.class)
+        ).isEmpty();
+        assertThat(AggregateClassUtil.findCommandHandler(
+                TestAggregate.class,
+                TestCommands.CommandA.class)
+        ).as("Failure to find eventHandler with a command class should not affect a later lookup of correct command handler")
+                .isNotEmpty();
+    }
+
+    @Test
     void findCommandHandler() {
         assertThat(AggregateClassUtil.findCommandHandler(
                 TestAggregate.class,
@@ -55,6 +84,18 @@ class AggregateClassUtilTest {
                 TestAggregate.class,
                 TestEvents.EventA.class)
         ).isNotEmpty();
+    }
+
+    @Test
+    void eventHandlerDoesNotExists() {
+        assertThat(AggregateClassUtil.findEventHandler(
+                TestAggregate.class,
+                String.class)
+        ).isEmpty();
+        assertThat(AggregateClassUtil.findEventHandler(
+                TestAggregate.class,
+                TestCommands.CommandA.class)
+        ).isEmpty();
     }
 
     @Test
