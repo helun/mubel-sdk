@@ -56,10 +56,10 @@ class AggregateFixtureTest {
     void expectEventsSatisfiesFails() {
         assertThatThrownBy(() ->
                 fixture.when(command)
-                .expectEventsSatisfies(events ->
-                        assertThat(events)
-                                .hasSize(3)
-                )
+                        .expectEventsSatisfies(events ->
+                                assertThat(events)
+                                        .hasSize(3)
+                        )
         );
     }
 
@@ -77,7 +77,18 @@ class AggregateFixtureTest {
     void givenEvents() {
         fixture.given(new TestEvents.EventA("A", 1))
                 .when(command)
-                .expectEvents(new TestEvents.EventA("a value", 2));
+                .expectEvents(new TestEvents.EventA("a value", 2))
+                .state(state -> assertThat(state.processedEventCount())
+                        .as("state processed event count")
+                        .isEqualTo(2));
+    }
+
+    @Test
+    void givenCommands() {
+        fixture.givenCommands(command)
+                .state(state -> assertThat(state.processedEventCount())
+                        .as("state processed event count")
+                        .isEqualTo(1));
     }
 
     @Test
@@ -109,7 +120,7 @@ class AggregateFixtureTest {
     void expectedEventsFail() {
         assertThatThrownBy(() -> fixture.when(command)
                 .expectEvents(new TestEvents.EventA("a value", 0))).isInstanceOf(java.lang.AssertionError.class)
-        .hasMessageContaining("expectEvents");
+                .hasMessageContaining("expectEvents");
     }
 
     @Test
@@ -122,8 +133,8 @@ class AggregateFixtureTest {
     @Test
     void commandHandlerReturnsNull() {
         assertThatThrownBy(() ->
-            fixture.when(new TestCommands.ReturnNullCommand())
-                    .expectEvents(new TestEvents.EventA("a value", 0))
+                fixture.when(new TestCommands.ReturnNullCommand())
+                        .expectEvents(new TestEvents.EventA("a value", 0))
         ).isInstanceOf(NoCommandHandlerFoundException.class)
                 .hasMessageContaining("No command handler found for class io.mubel.fixtures.TestCommands$ReturnNullCommand");
     }
