@@ -1,9 +1,6 @@
 package io.mubel.sdk.reflection;
 
-import io.mubel.sdk.fixtures.PrivateHandlersAggregate;
-import io.mubel.sdk.fixtures.TestAggregate;
-import io.mubel.sdk.fixtures.TestCommands;
-import io.mubel.sdk.fixtures.TestEvents;
+import io.mubel.sdk.fixtures.*;
 import io.mubel.sdk.internal.reflection.AggregateClassUtil;
 import org.junit.jupiter.api.Test;
 
@@ -15,22 +12,6 @@ class AggregateClassUtilTest {
     void newInstance() {
         final var instance = AggregateClassUtil.newInstance(TestAggregate.class);
         assertThat(instance).isInstanceOf(TestAggregate.class);
-    }
-
-    @Test
-    void findCommandHandlers() {
-        assertThat(AggregateClassUtil.findCommandHandler(
-                TestAggregate.class,
-                TestCommands.CommandA.class)
-        ).isNotEmpty();
-        assertThat(AggregateClassUtil.findCommandHandler(
-                TestAggregate.class,
-                TestCommands.CommandB.class)
-        ).isNotEmpty();
-        assertThat(AggregateClassUtil.findCommandHandler(
-                TestAggregate.class,
-                TestCommands.CommandA.class)
-        ).isNotEmpty();
     }
 
     @Test
@@ -67,6 +48,14 @@ class AggregateClassUtilTest {
         assertThat(AggregateClassUtil.findCommandHandler(
                 TestAggregate.class,
                 TestCommands.CommandB.class)
+        ).isNotEmpty();
+    }
+
+    @Test
+    void findCommandHandlerWithNonListReturnType() {
+        assertThat(AggregateClassUtil.findCommandHandler(
+                WithoutDispatchMethodsAggregate.class,
+                TestCommands.CommandC.class)
         ).isNotEmpty();
     }
 

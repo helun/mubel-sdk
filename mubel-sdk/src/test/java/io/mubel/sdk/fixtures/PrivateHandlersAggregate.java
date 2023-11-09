@@ -28,6 +28,7 @@ public class PrivateHandlersAggregate {
         return switch (command) {
             case TestCommands.CommandA ca -> onCommand(ca);
             case TestCommands.CommandB cb -> onCommand(cb);
+            case TestCommands.CommandC cc -> List.of();
         };
     }
 

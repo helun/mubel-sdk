@@ -7,4 +7,7 @@ public sealed interface TestCommands {
 
     record CommandB() implements TestCommands {
     }
+
+    record CommandC() implements TestCommands {
+    }
 }

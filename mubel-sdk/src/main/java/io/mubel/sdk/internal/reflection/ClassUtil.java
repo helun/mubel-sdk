@@ -4,10 +4,36 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 class ClassUtil {
+
+    private static final Set<Class<?>> IRRELEVANT_RETURN_TYPES = Set.of(
+            void.class,
+            Void.class,
+            Object.class,
+            Boolean.class,
+            boolean.class,
+            int.class,
+            Integer.class,
+            String.class,
+            Long.class,
+            long.class,
+            Double.class,
+            double.class,
+            Float.class,
+            float.class,
+            Short.class,
+            short.class,
+            Byte.class,
+            byte.class,
+            Character.class,
+            char.class,
+            Collection.class
+    );
 
     static final Predicate<Method> PUBLIC_METHOD =
             method -> Modifier.isPublic(method.getModifiers());
@@ -44,5 +70,8 @@ class ClassUtil {
     static Predicate<Method> methodHasVoidReturnType() {
         return method -> method.getReturnType() == void.class;
     }
-    
+
+    static Predicate<? super Method> hasEventLikeReturnType() {
+        return method -> !IRRELEVANT_RETURN_TYPES.contains(method.getReturnType());
+    }
 }

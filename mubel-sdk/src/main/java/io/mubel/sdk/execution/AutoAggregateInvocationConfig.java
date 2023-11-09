@@ -17,6 +17,7 @@ public class AutoAggregateInvocationConfig {
         return of(aggregateClass, Object.class, Object.class);
     }
 
+    @SuppressWarnings("unchecked")
     public static <T, E, C> AggregateInvocationConfig<T, E, C> of(
             Class<T> aggregateClass,
             Class<E> eventBaseClass,
@@ -28,6 +29,7 @@ public class AutoAggregateInvocationConfig {
         return new AggregateInvocationConfig<>(aggregateSupplier, eventDispatcher, commandDispatcher);
     }
 
+    @SuppressWarnings("unchecked")
     private static <E, C, T> Function<C, List<E>> reflectionCommandDispatcher(Class<T> aggregateClass, T aggregateInstance) {
         return (C command) ->
                 AggregateClassUtil.findCommandHandler(aggregateClass, command.getClass())
@@ -49,9 +51,15 @@ public class AutoAggregateInvocationConfig {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static <T, C, E> List<E> invokeCommandHandler(T aggregateInstance, C command, Method commandHandler) {
         try {
-            return (List<E>) commandHandler.invoke(aggregateInstance, command);
+            var result = commandHandler.invoke(aggregateInstance, command);
+            if (result instanceof List) {
+                return (List<E>) result;
+            } else {
+                return List.of((E) result);
+            }
         } catch (Exception e) {
             throw new CommandHandlerException("Caught exception while invoking %s".formatted(commandHandler.getName()), e);
         }

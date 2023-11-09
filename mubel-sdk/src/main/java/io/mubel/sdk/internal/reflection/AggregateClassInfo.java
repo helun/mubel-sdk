@@ -2,7 +2,10 @@ package io.mubel.sdk.internal.reflection;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -14,6 +17,9 @@ record AggregateClassInfo(
         Map<Class<?>, Optional<Method>> commandHandlers,
         Map<Class<?>, Optional<Method>> eventHandlers
 ) {
+    private final static CommandHandlerFinder COMMAND_HANDLER_FINDER = new CommandHandlerFinder();
+    private final static EventHandlerFinder EVENT_HANDLER_FINDER = new EventHandlerFinder();
+
     static AggregateClassInfo create(
             Class<?> aggregateClass) {
         return new AggregateClassInfo(
@@ -33,13 +39,9 @@ record AggregateClassInfo(
     }
 
     private Optional<Method> doFindCommandHandler(Class<?> commandType) {
-        Function<Class<?>, Predicate<Method>> predicateFn = aClass -> ClassUtil.PUBLIC_METHOD
-                .and(ClassUtil.methodHasArgumentOfType(aClass))
-                .and(ClassUtil.methodHasReturnType(List.class));
-
         return findHandler(
                 commandType,
-                predicateFn
+                COMMAND_HANDLER_FINDER
         );
     }
 
@@ -51,13 +53,9 @@ record AggregateClassInfo(
     }
 
     private Optional<Method> doFindEventHandler(Class<?> eventType) {
-        Function<Class<?>, Predicate<Method>> predicateFn = aClass -> ClassUtil.PUBLIC_METHOD
-                .and(ClassUtil.methodHasArgumentOfType(aClass))
-                .and(ClassUtil.methodHasVoidReturnType());
-
         return findHandler(
                 eventType,
-                predicateFn
+                EVENT_HANDLER_FINDER
         );
     }
 

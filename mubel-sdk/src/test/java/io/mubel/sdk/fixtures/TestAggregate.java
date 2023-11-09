@@ -29,7 +29,12 @@ public class TestAggregate {
         return switch (command) {
             case TestCommands.CommandA ca -> onCommand(ca);
             case TestCommands.CommandB cb -> onCommand(cb);
+            case TestCommands.CommandC cc -> onCommand(cc);
         };
+    }
+
+    public List<TestEvents> onCommand(TestCommands.CommandC cc) {
+        return List.of(new TestEvents.EventA("C", ++processedEventCount));
     }
 
     public List<TestEvents> onCommand(TestCommands.CommandA commandA) {
