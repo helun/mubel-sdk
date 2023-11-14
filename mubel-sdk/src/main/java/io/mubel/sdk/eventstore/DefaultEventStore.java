@@ -47,6 +47,17 @@ public class DefaultEventStore implements EventStore {
         return response.getEventsList();
     }
 
+    @Override
+    public List<EventData> get(String streamId, int version) {
+        var response = client.get(
+                GetEventsRequest.newBuilder()
+                        .setEsid(eventStoreId)
+                        .setStreamId(streamId)
+                        .build()
+        );
+        return response.getEventsList();
+    }
+
     public static class Builder {
         private String eventStoreId;
         private MubelClient client;

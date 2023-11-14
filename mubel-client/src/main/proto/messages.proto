@@ -44,10 +44,12 @@ message GetEventsRequest {
   string streamId = 2;
   // only effective when stream id is specified
   uint32 fromVersion = 3;
+  // only effective when stream id is specified
+  uint32 toVersion = 4;
   // max size of the result list (default 999)
-  uint32 size = 4;
+  uint32 size = 5;
   // return events created after the sequence no, only effective if stream id has not been specified
-  int64 fromSequenceNo = 5;
+  int64 fromSequenceNo = 6;
 }
 
 message SubscribeRequest {

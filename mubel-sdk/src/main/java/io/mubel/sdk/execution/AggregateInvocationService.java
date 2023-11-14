@@ -28,7 +28,7 @@ public class AggregateInvocationService<T, E, C> {
         this.commandExecutor = new CommandExecutor<>(requireNonNull(config, "config may not be null"));
     }
 
-    public CommandResult submit(UUID streamId, C command) {
+    public CommandResult<E> submit(UUID streamId, C command) {
         final var nnStreamId = parseStreamId(streamId);
         final var nnCommand = requireNonNull(command, "command may not be null");
         final var ctx = InvocationContext.create(nnStreamId);
@@ -37,11 +37,12 @@ public class AggregateInvocationService<T, E, C> {
         final var newEvents = commandExecutor.execute(existingEvents, nnCommand);
         appendNewEvents(ctx, newEvents);
         final int newVersion = ctx.currentVersion();
-        return new CommandResult(
+        return new CommandResult<>(
                 streamId,
                 newEvents.size(),
                 oldVersion,
-                newVersion
+                newVersion,
+                newEvents
         );
     }
 
@@ -49,6 +50,16 @@ public class AggregateInvocationService<T, E, C> {
         final var nnStreamId = parseStreamId(streamId);
         final var ctx = InvocationContext.create(nnStreamId);
         final var existingEvents = getExistingEvents(nnStreamId, ctx);
+        if (existingEvents.isEmpty()) {
+            throw new EventStreamNotFoundException("stream id: %s not found".formatted(streamId));
+        }
+        return commandExecutor.getState(existingEvents);
+    }
+
+    public T getState(UUID streamId, int version) {
+        final var nnStreamId = parseStreamId(streamId);
+        final var ctx = InvocationContext.create(nnStreamId);
+        final var existingEvents = getExistingEvents(nnStreamId, version, ctx);
         if (existingEvents.isEmpty()) {
             throw new EventStreamNotFoundException("stream id: %s not found".formatted(streamId));
         }
@@ -84,6 +95,14 @@ public class AggregateInvocationService<T, E, C> {
     private List<E> getExistingEvents(String streamId, InvocationContext ctx) {
         return (List<E>) eventDataMapper.fromEventData(
                 eventStore.get(streamId),
+                ed -> ctx.applyVersion(ed.getVersion())
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<E> getExistingEvents(String streamId, int version, InvocationContext ctx) {
+        return (List<E>) eventDataMapper.fromEventData(
+                eventStore.get(streamId, version),
                 ed -> ctx.applyVersion(ed.getVersion())
         );
     }

@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -51,6 +52,10 @@ class AggregateInvocationServiceTest {
         assertThat(result.newEventCount()).isEqualTo(1);
         assertThat(result.newVersion()).isEqualTo(1);
         assertThat(result.oldVersion()).isEqualTo(0);
+        assertThat(result.newEvents())
+                .hasSize(1)
+                .first()
+                .satisfies(event -> assertThat(event).isInstanceOf(TestEvents.EventA.class));
         verify(eventStore).append(ArgumentMatchers.anyList());
     }
 
@@ -76,6 +81,18 @@ class AggregateInvocationServiceTest {
         final var result = service.getState(UUID.fromString(existing.getStreamId()));
         assertThat(result).isNotNull();
         assertState(result);
+    }
+
+    @Test
+    void getStateByVersion() {
+        final var streamId = UUID.randomUUID();
+        int toVersion = 1;
+        int count = 3;
+        setupExistingStream(events(streamId, count), toVersion);
+        final var service = getService();
+        final var result = service.getState(streamId, toVersion);
+        assertThat(result).isNotNull();
+        assertState(result, count);
     }
 
     @Test
@@ -105,22 +122,36 @@ class AggregateInvocationServiceTest {
     }
 
     private static AbstractIntegerAssert<?> assertState(TestAggregate aggregate) {
-        return assertThat(aggregate.getProcessedEventCount()).isEqualTo(1);
+        return assertState(aggregate, 1);
+    }
+
+    private static AbstractIntegerAssert<?> assertState(TestAggregate aggregate, int expectedEventCount) {
+        return assertThat(aggregate.getProcessedEventCount()).isEqualTo(expectedEventCount);
     }
 
     private static EventData event() {
+        return events(UUID.randomUUID(), 1).getFirst();
+    }
+
+    private static List<EventData> events(UUID streamId, int count) {
+        return IntStream.range(0, count).mapToObj(i -> EventData.newBuilder()
+                        .setStreamId(streamId.toString())
+                        .setType(TestEvents.EventA.class.getName())
+                        .setData(eventData(count))
+                        .setVersion(i)
+                        .build())
+                .toList();
+
+    }
+
+    private static ByteString eventData(int count) {
         try {
-            return EventData.newBuilder()
-                    .setStreamId(UUID.randomUUID().toString())
-                    .setType(TestEvents.EventA.class.getName())
-                    .setData(ByteString.copyFrom("""
-                            {
-                                "value": "value",
-                                "processedEventCount": 1
-                            }
-                            """, "UTF-8"))
-                    .setVersion(0)
-                    .build();
+            return ByteString.copyFrom("""
+                    {
+                        "value": "value",
+                        "processedEventCount": %d
+                    }
+                    """.formatted(count), "UTF-8");
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException(e);
         }
@@ -128,8 +159,18 @@ class AggregateInvocationServiceTest {
 
     private EventData setupExistingStream() {
         final var existing = event();
-        when(eventStore.get(ArgumentMatchers.anyString())).thenReturn(List.of(existing));
+        setupExistingStream(List.of(existing));
         return existing;
+    }
+
+    private void setupExistingStream(List<EventData> events) {
+        when(eventStore.get(ArgumentMatchers.anyString()))
+                .thenReturn(events);
+    }
+
+    private void setupExistingStream(List<EventData> events, int toVersion) {
+        when(eventStore.get(ArgumentMatchers.anyString(), ArgumentMatchers.eq(toVersion)))
+                .thenReturn(events);
     }
 
     private void setupNonExistingStream() {
