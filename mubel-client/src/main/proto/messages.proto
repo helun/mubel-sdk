@@ -126,3 +126,45 @@ message ServiceInfoResponse {
   repeated StorageBackendInfo storageBackends = 1;
   repeated EventStoreDetails eventStores = 2;
 }
+
+/**
+  * A scheduled event is an event that will be published at a specific time in the future.
+  * These events are not handled by the event store and will not be present in the event stores various services
+  * such as subscriptions etc.
+  *
+  * Scheduled events are useful for triggering events at a specific time in the future, for example handling timout or triggering
+  * of various business processes.
+ */
+message ScheduledEvent {
+  // Id of the event - REQUIRED
+  string id = 1;
+  // REQUIRED
+  string category = 2;
+  // The time in milliseconds since the epoch (UTC) when the event should be published - REQUIRED
+  uint64 publishTime = 3;
+  // Type of event - REQUIRED
+  string type = 4;
+  // event data
+  bytes data = 5;
+}
+/**
+ * Cancel a scheduled event. The event will not be published.
+ */
+message CancelScheduledEventsRequest {
+  // Ids of the events to cancel - REQUIRED
+  repeated string eventId = 1;
+}
+/**
+ * Subscribe to scheduled events. The subscriber will receive events when they are published.
+ */
+message ScheduledEventsSubscribeRequest {
+  // the categories to subscribe to. If empty, all categories will be subscribed to
+  repeated string category = 1;
+}
+
+/**
+ * Contains events that have been triggered.
+ */
+message TriggeredEvents {
+  repeated ScheduledEvent events = 1;
+}

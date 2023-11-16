@@ -20,6 +20,9 @@ public class MubelClient {
         serviceStub = EventServiceGrpc.newBlockingStub(channel);
     }
 
+    /**
+     * Provisions a new event store. The call will fail if the event store already exists.
+     */
     public EventStoreDetails provision(ProvisionEventStoreRequest request) {
         try {
             return serviceStub.provision(request);
@@ -28,6 +31,9 @@ public class MubelClient {
         }
     }
 
+    /**
+     * Append new events to an event store
+     */
     public AppendAck append(AppendRequest request) {
         try {
             return serviceStub.append(request);
@@ -63,6 +69,25 @@ public class MubelClient {
     public DropEventStoreResponse drop(DropEventStoreRequest request) {
         try {
             return serviceStub.drop(request);
+        } catch (Throwable err) {
+            throw handleFailure(err);
+        }
+    }
+
+    public void scheduleEvent(ScheduledEvent event) {
+        try {
+            final var empty = serviceStub.scheduleEvent(event);
+        } catch (Throwable err) {
+            throw handleFailure(err);
+        }
+    }
+
+    /**
+     * Subscribe to scheduled events. The subscriber will receive events when they are published.
+     */
+    public Iterator<TriggeredEvents> subscribeToScheduledEvents(ScheduledEventsSubscribeRequest request) {
+        try {
+            return serviceStub.subscribeToScheduledEvents(request);
         } catch (Throwable err) {
             throw handleFailure(err);
         }

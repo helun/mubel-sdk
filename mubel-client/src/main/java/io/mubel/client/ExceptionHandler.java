@@ -16,13 +16,23 @@ public class ExceptionHandler {
             var status = sre.getStatus();
             System.err.println(status.getCode() + " " + status.getDescription());
             var metadata = Status.trailersFromThrowable(sre);
-            var pd = metadata.get(ProtoUtils.keyForProto(ProblemDetail.getDefaultInstance()));
-            System.err.println(pd);
-            return sre;
+            if (metadata != null) {
+                var pd = metadata.get(ProtoUtils.keyForProto(ProblemDetail.getDefaultInstance()));
+                System.err.println(pd);
+            }
+            if (status == Status.CANCELLED) {
+                return new ConnectionClosedException(status.getDescription());
+            }
+            if (status == Status.INVALID_ARGUMENT) {
+                return new BadRequestException(status.getDescription());
+            }
+            if (status == Status.INTERNAL) {
+                return new ServerException(status.getDescription());
+            }
         } else {
             err.printStackTrace(System.err);
         }
-        return new RuntimeException(cause);
+        return new MubelClientException(cause);
     }
 
 }

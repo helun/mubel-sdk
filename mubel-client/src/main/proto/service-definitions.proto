@@ -4,6 +4,7 @@ option java_multiple_files = true;
 option java_package = "io.mubel.api.grpc";
 
 import "messages.proto";
+import "google/protobuf/empty.proto";
 
 package events;
 
@@ -16,4 +17,7 @@ service EventService {
   rpc subscribe (SubscribeRequest) returns (stream EventData) {}
   rpc drop (DropEventStoreRequest) returns (DropEventStoreResponse) {}
   rpc serverInfo (GetServiceInfoRequest) returns (ServiceInfoResponse) {}
+  rpc scheduleEvent(ScheduledEvent) returns (google.protobuf.Empty);
+  // Subscribe to scheduled events. The subscriber will receive events when they are published.
+  rpc subscribeToScheduledEvents (ScheduledEventsSubscribeRequest) returns (stream TriggeredEvents) {}
 }

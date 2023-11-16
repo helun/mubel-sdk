@@ -2,6 +2,7 @@ package io.mubel.sdk.subscription;
 
 import io.mubel.api.grpc.EventData;
 import io.mubel.api.grpc.SubscribeRequest;
+import io.mubel.client.ExceptionHandler;
 import io.mubel.client.MubelClient;
 import io.mubel.sdk.exceptions.MubelConfigurationException;
 import io.mubel.sdk.internal.Utils;
@@ -53,12 +54,13 @@ public class SubscriptionFactory {
                     final var e = stream.next();
                     offer(buffer, e);
                 }
-                LOG.info("Subscription (esid: {}, from version: {}) stream closed", params.eventStoreId(), fromSequenceNo);
+                LOG.info("Subscription (esid: {}, from version: {}) stream stopped", params.eventStoreId(), fromSequenceNo);
             } catch (InterruptedException e) {
                 LOG.error("Subscription (esid: {}, from version: {}) stream was interrupted", params.eventStoreId(), fromSequenceNo);
                 Thread.currentThread().interrupt();
             } catch (Throwable err) {
-                LOG.error("Subscription (esid: {}, from version: {}) stream failed", params.eventStoreId(), fromSequenceNo, err);
+                final var mapped = ExceptionHandler.handleFailure(err);
+                LOG.error("Subscription (esid: {}, from version: {}) stream stopped", params.eventStoreId(), fromSequenceNo, mapped);
             }
         });
     }
