@@ -166,5 +166,5 @@ message ScheduledEventsSubscribeRequest {
  * Contains events that have been triggered.
  */
 message TriggeredEvents {
-  repeated ScheduledEvent events = 1;
+  repeated ScheduledEvent event = 1;
 }

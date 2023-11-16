@@ -20,4 +20,5 @@ service EventService {
   rpc scheduleEvent(ScheduledEvent) returns (google.protobuf.Empty);
   // Subscribe to scheduled events. The subscriber will receive events when they are published.
   rpc subscribeToScheduledEvents (ScheduledEventsSubscribeRequest) returns (stream TriggeredEvents) {}
+  rpc cancelScheduledEvents (CancelScheduledEventsRequest) returns (google.protobuf.Empty) {}
 }

@@ -93,6 +93,14 @@ public class MubelClient {
         }
     }
 
+    public void cancelScheduledEvents(CancelScheduledEventsRequest request) {
+        try {
+            final var empty = serviceStub.cancelScheduledEvents(request);
+        } catch (Throwable err) {
+            throw handleFailure(err);
+        }
+    }
+
     private RuntimeException handleFailure(Throwable err) {
         try {
             if (err == null) {
