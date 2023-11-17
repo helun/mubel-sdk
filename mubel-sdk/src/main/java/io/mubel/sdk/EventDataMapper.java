@@ -3,6 +3,7 @@ package io.mubel.sdk;
 import com.google.protobuf.ByteString;
 import io.mubel.api.grpc.EventData;
 import io.mubel.api.grpc.EventDataInput;
+import io.mubel.api.grpc.ScheduledEvent;
 import io.mubel.sdk.codec.EventDataCodec;
 
 import java.util.List;
@@ -42,6 +43,11 @@ public class EventDataMapper {
     public Object fromEventData(EventData eventData) {
         final var eventClass = eventTypeRegistry.getClassForType(eventData.getType());
         return codec.decode(eventData.getData().toByteArray(), eventClass);
+    }
+
+    public Object fromScheduledEvent(ScheduledEvent event) {
+        final var eventClass = eventTypeRegistry.getClassForType(event.getType());
+        return codec.decode(event.getData().toByteArray(), eventClass);
     }
 
     /**

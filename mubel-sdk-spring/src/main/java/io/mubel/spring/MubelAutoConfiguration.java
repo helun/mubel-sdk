@@ -13,26 +13,34 @@ import io.mubel.sdk.codec.JacksonJsonEventDataCodec;
 import io.mubel.sdk.eventstore.DefaultEventStore;
 import io.mubel.sdk.eventstore.EventStore;
 import io.mubel.sdk.eventstore.EventStoreProvisioner;
+import io.mubel.sdk.scheduled.ScheduledEventsConfig;
+import io.mubel.sdk.scheduled.ScheduledEventsManager;
+import io.mubel.sdk.scheduled.ScheduledEventsSubscriptionFactory;
+import io.mubel.sdk.scheduled.ScheduledEventsWorker;
 import io.mubel.sdk.subscription.*;
 import io.mubel.sdk.tx.TransactionAdapter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.transaction.TransactionAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.system.JavaVersion;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @AutoConfiguration(after = {
         DataSourceAutoConfiguration.class,
@@ -86,6 +94,7 @@ public class MubelAutoConfiguration {
     }
 
     @Bean
+    @Lazy
     @ConditionalOnMissingBean
     public IdGenerator idGenerator(MubelProperties properties) {
         return properties.getIdGenerator() == MubelProperties.IdGenerationStrategy.TIMEBASED ?
@@ -93,6 +102,7 @@ public class MubelAutoConfiguration {
     }
 
     @Bean
+    @Lazy
     @ConditionalOnMissingBean
     public EventTypeRegistry eventTypeRegistry() {
         return EventTypeRegistry.builder()
@@ -110,6 +120,7 @@ public class MubelAutoConfiguration {
     }
 
     @Bean
+    @Lazy
     @ConditionalOnBean(ObjectMapper.class)
     public EventDataMapper jacksonEventDataMapper(
             ObjectMapper jsonMapper,
@@ -124,10 +135,11 @@ public class MubelAutoConfiguration {
     }
 
     @Bean
+    @Lazy
     @ConditionalOnBean({MubelClient.class, Executor.class})
     public SubscriptionFactory subscriptionFactory(
             MubelClient client,
-            Executor executor
+            @Qualifier("mubelTaskExecutor") Executor executor
     ) {
         return SubscriptionFactory.builder()
                 .client(client)
@@ -136,6 +148,7 @@ public class MubelAutoConfiguration {
     }
 
     @Bean
+    @Lazy
     @ConditionalOnMissingBean
     @ConditionalOnBean(TransactionTemplate.class)
     public TransactionAdapter springTxTransactionAdapter(TransactionTemplate txTemplate) {
@@ -152,12 +165,14 @@ public class MubelAutoConfiguration {
     }
 
     @Bean
+    @Lazy
     @ConditionalOnMissingBean
     public TransactionAdapter noOpTransactionAdapter() {
         return TransactionAdapter.noOpTransactionAdapter();
     }
 
     @Bean
+    @Lazy
     @ConditionalOnMissingBean
     @ConditionalOnBean(DataSource.class)
     public SubscriptionStateRepository subscriptionStateRepository(DataSource dataSource) {
@@ -186,7 +201,7 @@ public class MubelAutoConfiguration {
     public SubscriptionManager subscriptionManager(
             List<SubscriptionConfig<?>> subscriptionConfigs,
             SubscriptionWorker subscriptionWorker,
-            Executor executor
+            @Qualifier("mubelTaskExecutor") Executor executor
     ) {
         return SubscriptionManager.builder()
                 .configs(subscriptionConfigs)
@@ -201,6 +216,85 @@ public class MubelAutoConfiguration {
             SubscriptionManager subscriptionManager
     ) {
         return event -> subscriptionManager.start();
+    }
+
+    @Bean
+    @Lazy
+    @ConditionalOnMissingBean
+    public ScheduledEventsSubscriptionFactory scheduledEventsSubscriptionFactory(
+            MubelClient client,
+            @Qualifier("mubelTaskExecutor") Executor executor
+    ) {
+        return ScheduledEventsSubscriptionFactory.builder()
+                .client(client)
+                .executor(executor)
+                .build();
+    }
+
+    @Bean
+    @Lazy
+    @ConditionalOnMissingBean
+    public ScheduledEventsWorker scheduledEventsWorker(
+            EventDataMapper mapper,
+            ScheduledEventsSubscriptionFactory subscriptionFactory
+    ) {
+        return ScheduledEventsWorker.builder()
+                .mapper(mapper)
+                .subscriptionFactory(subscriptionFactory)
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnBean({ScheduledEventsConfig.class})
+    public ScheduledEventsManager scheduledEventsManager(
+            List<ScheduledEventsConfig<?>> configs,
+            ScheduledEventsWorker worker,
+            @Qualifier("mubelTaskExecutor") Executor executor
+    ) {
+        return ScheduledEventsManager.builder()
+                .configs(configs)
+                .worker(worker)
+                .executor(executor)
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnBean(ScheduledEventsManager.class)
+    public ApplicationListener<ContextRefreshedEvent> scheduledEventsManagerStarter(
+            ScheduledEventsManager scheduledEventsManager
+    ) {
+        return event -> scheduledEventsManager.start();
+    }
+
+    @Bean("mubelTaskExecutor")
+    @ConditionalOnMissingBean
+    @ConditionalOnJava(range = ConditionalOnJava.Range.EQUAL_OR_NEWER, value = JavaVersion.TWENTY_ONE)
+    public Executor virtialThreadsTaskExecutor() {
+        return Executors.newVirtualThreadPerTaskExecutor();
+    }
+
+    @Bean("mubelTaskExecutor")
+    @ConditionalOnMissingBean
+    @ConditionalOnJava(range = ConditionalOnJava.Range.OLDER_THAN, value = JavaVersion.TWENTY_ONE)
+    public Executor taskExecutor() {
+        var executor = new ThreadPoolTaskExecutor();
+        executor.setThreadNamePrefix("mubel-");
+        executor.setQueueCapacity(0);
+        executor.setWaitForTasksToCompleteOnShutdown(false);
+        return executor;
+    }
+
+    @Bean
+    @ConditionalOnBean(name = "mubelTaskExecutor")
+    public ApplicationListener<ContextClosedEvent> stopWorkers(@Qualifier("mubelTaskExecutor") Executor executor) {
+        return event -> {
+            if (executor instanceof ThreadPoolTaskExecutor tpe) {
+                tpe.shutdown();
+            } else if (executor instanceof ExecutorService es) {
+                es.shutdownNow();
+            }
+        };
     }
 
     static class PropertiesMubelConnectionDetails implements MubelConnectionDetails {

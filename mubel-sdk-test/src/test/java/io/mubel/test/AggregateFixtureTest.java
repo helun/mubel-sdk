@@ -3,7 +3,7 @@ package io.mubel.test;
 import io.mubel.fixtures.TestAggregate;
 import io.mubel.fixtures.TestCommands;
 import io.mubel.fixtures.TestEvents;
-import io.mubel.sdk.exceptions.NoCommandHandlerFoundException;
+import io.mubel.sdk.exceptions.CommandHandlerException;
 import io.mubel.sdk.execution.AutoAggregateInvocationConfig;
 import org.junit.jupiter.api.Test;
 
@@ -135,8 +135,8 @@ class AggregateFixtureTest {
         assertThatThrownBy(() ->
                 fixture.when(new TestCommands.ReturnNullCommand())
                         .expectEvents(new TestEvents.EventA("a value", 0))
-        ).isInstanceOf(NoCommandHandlerFoundException.class)
-                .hasMessageContaining("No command handler found for class io.mubel.fixtures.TestCommands$ReturnNullCommand");
+        ).isInstanceOf(CommandHandlerException.class)
+                .hasMessageContaining("Caught exception while invoking onCommand");
     }
 
 }

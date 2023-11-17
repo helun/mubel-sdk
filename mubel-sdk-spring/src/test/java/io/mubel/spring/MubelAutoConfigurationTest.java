@@ -1,6 +1,7 @@
 package io.mubel.spring;
 
 import io.mubel.sdk.eventstore.EventStore;
+import io.mubel.sdk.scheduled.ScheduledEventsConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,6 +32,9 @@ public class MubelAutoConfigurationTest {
 
     @Autowired
     EventStore eventStore;
+
+    @Autowired
+    ScheduledEventsConfig<?> scheduledEventsConfigList;
 
     @Test
     void baseCase() {
