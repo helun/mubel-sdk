@@ -66,4 +66,16 @@ public final class Utils {
         }
         return input;
     }
+
+    public static <T> boolean anyNull(Object... inputs) {
+        if (inputs == null) {
+            return true;
+        }
+        for (var input : inputs) {
+            if (input == null) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

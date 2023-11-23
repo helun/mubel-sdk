@@ -7,7 +7,19 @@ import java.util.UUID;
 
 public class IdGenerator {
 
+    private static final IdGenerator DEFAULT = createDefaultGenerator();
+
+    private static IdGenerator createDefaultGenerator() {
+        final var defaultType = System.getProperty("mubel.id.generator", "timebased");
+        return switch (defaultType) {
+            case "timebased" -> timebasedGenerator();
+            case "random" -> randomGenerator();
+            default -> throw new IllegalArgumentException("Unknown id generator type: " + defaultType);
+        };
+    }
+
     private final NoArgGenerator generator;
+
 
     private IdGenerator(NoArgGenerator generator) {
         this.generator = generator;
@@ -23,5 +35,9 @@ public class IdGenerator {
 
     public UUID generate() {
         return generator.generate();
+    }
+
+    public static IdGenerator defaultGenerator() {
+        return DEFAULT;
     }
 }

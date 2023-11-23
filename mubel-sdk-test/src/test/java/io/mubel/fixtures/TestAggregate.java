@@ -1,11 +1,15 @@
 package io.mubel.fixtures;
 
+import io.mubel.sdk.annotation.CommandHandler;
+import io.mubel.sdk.annotation.EventHandler;
+
 import java.util.List;
 
 public class TestAggregate {
 
     private int processedEventCount = 0;
 
+    @EventHandler
     public void apply(TestEvents event) {
         switch (event) {
             case TestEvents.EventA eventA -> onEvent(eventA);
@@ -21,6 +25,7 @@ public class TestAggregate {
         processedEventCount = event.processedEventCount();
     }
 
+    @CommandHandler
     public List<TestEvents> handle(TestCommands command) {
         return switch (command) {
             case TestCommands.CommandA commandA -> onCommand(commandA);

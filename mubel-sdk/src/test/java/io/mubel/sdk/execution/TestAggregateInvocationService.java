@@ -9,11 +9,11 @@ import io.mubel.sdk.fixtures.TestEvents;
 public class TestAggregateInvocationService extends AggregateInvocationService<TestAggregate, TestEvents, TestCommands> {
 
     public TestAggregateInvocationService(EventStore eventStore, EventDataMapper eventDataMapper) {
-        super(AggregateInvocationConfig.of(
-                        TestAggregate::new,
-                        a -> a::apply,
-                        a -> a::handle
-                ),
+        super(AggregateInvocationConfig.builder(
+                        TestAggregate.class,
+                        TestEvents.class,
+                        TestCommands.class
+                ).build(),
                 eventStore,
                 eventDataMapper
         );

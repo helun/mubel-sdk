@@ -44,7 +44,7 @@ class EventStoreProvisionerTest {
                 .build();
 
         setupServiceInfo(ServiceInfoResponse.newBuilder()
-                .addEventStores(PROTO_DETAILS));
+                .addEventStore(PROTO_DETAILS));
 
         eventStoreProvisioner.provision();
         verifyNoProvisionCall();
@@ -58,7 +58,7 @@ class EventStoreProvisionerTest {
                 .build();
 
         setupServiceInfo(ServiceInfoResponse.newBuilder()
-                .addEventStores(JSON_DETAILS));
+                .addEventStore(JSON_DETAILS));
 
         assertThatThrownBy(eventStoreProvisioner::provision)
                 .as("provisioning an existing event store with different params should fail")
@@ -74,7 +74,7 @@ class EventStoreProvisionerTest {
                 .build();
 
         setupServiceInfo(ServiceInfoResponse.newBuilder()
-                .addStorageBackends(StorageBackendInfo.newBuilder()
+                .addStorageBackend(StorageBackendInfo.newBuilder()
                         .setType("PG")
                         .setName("backend")
                         .build())
@@ -92,7 +92,7 @@ class EventStoreProvisionerTest {
 
         setupServiceInfo(
                 ServiceInfoResponse.newBuilder()
-                        .addStorageBackends(StorageBackendInfo.newBuilder()
+                        .addStorageBackend(StorageBackendInfo.newBuilder()
                                 .setType("PG")
                                 .setName("other_backend")
                                 .build())

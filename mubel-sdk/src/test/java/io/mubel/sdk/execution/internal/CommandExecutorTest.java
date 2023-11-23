@@ -14,16 +14,16 @@ class CommandExecutorTest {
 
     @Test
     void doit() {
-        final var config = AggregateInvocationConfig.of(
-                TestAggregate::new,
-                a -> a::apply,
-                (TestAggregate a) -> a::handle
-        );
+        final var config = AggregateInvocationConfig.builder(
+                TestAggregate.class,
+                TestEvents.class,
+                TestCommands.class
+        ).build();
 
-        final var result = new CommandExecutor<>(config)
+        final var handlerResult = new CommandExecutor<>(config)
                 .execute(List.of(), new TestCommands.CommandA("test"));
 
-        assertThat(result)
+        assertThat(handlerResult.events())
                 .hasSize(1)
                 .contains(new TestEvents.EventA("test", 1));
     }

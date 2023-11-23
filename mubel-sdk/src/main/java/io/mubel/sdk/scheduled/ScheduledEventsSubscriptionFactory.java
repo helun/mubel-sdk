@@ -29,13 +29,13 @@ public class ScheduledEventsSubscriptionFactory {
         this.executor = executor;
     }
 
-    public <T> ScheduledEventsSubscription create(ScheduledEventsConfig<T> params) {
+    public ScheduledEventsSubscription create(ScheduledEventsConfig params) {
         final var buffer = new ArrayBlockingQueue<ScheduledEvent>(100);
         start(buffer, params);
         return new ScheduledEventsSubscription(buffer);
     }
 
-    private <T> void start(BlockingQueue<ScheduledEvent> buffer, ScheduledEventsConfig<T> params) {
+    private <T> void start(BlockingQueue<ScheduledEvent> buffer, ScheduledEventsConfig params) {
         executor.execute(() -> {
             LOG.info("Scheduled events subscription starting: {}", getCategoriesString(params.categories()));
             try {

@@ -1,5 +1,7 @@
 package io.mubel.sdk.internal.reflection;
 
+import io.mubel.sdk.scheduled.ExpiredDeadline;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -51,5 +53,10 @@ public class AggregateClassUtil {
         } catch (NoSuchMethodException e) {
             return Optional.empty();
         }
+    }
+
+    public static Optional<Method> findDeadlineHandler(Class<?> testAggregateClass, ExpiredDeadline deadline) {
+        return Optional.of(AGGREGATE_INFOS.get(testAggregateClass))
+                .flatMap(info -> info.findDeadlineHandler(deadline));
     }
 }

@@ -38,7 +38,7 @@ public class EventStoreProvisioner {
     }
 
     private static Set<String> getBackends(ServiceInfoResponse serverInfo) {
-        return serverInfo.getStorageBackendsList()
+        return serverInfo.getStorageBackendList()
                 .stream()
                 .map(StorageBackendInfo::getName)
                 .collect(Collectors.toCollection(TreeSet::new));
@@ -78,7 +78,7 @@ public class EventStoreProvisioner {
     }
 
     private static Map<String, EventStoreDetails> indexEventStoreByEsid(ServiceInfoResponse serverInfo) {
-        return serverInfo.getEventStoresList()
+        return serverInfo.getEventStoreList()
                 .stream()
                 .collect(Collectors.toMap(EventStoreDetails::getEsid, Function.identity()));
     }

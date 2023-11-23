@@ -13,10 +13,7 @@ import io.mubel.sdk.codec.JacksonJsonEventDataCodec;
 import io.mubel.sdk.eventstore.DefaultEventStore;
 import io.mubel.sdk.eventstore.EventStore;
 import io.mubel.sdk.eventstore.EventStoreProvisioner;
-import io.mubel.sdk.scheduled.ScheduledEventsConfig;
-import io.mubel.sdk.scheduled.ScheduledEventsManager;
 import io.mubel.sdk.scheduled.ScheduledEventsSubscriptionFactory;
-import io.mubel.sdk.scheduled.ScheduledEventsWorker;
 import io.mubel.sdk.subscription.*;
 import io.mubel.sdk.tx.TransactionAdapter;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -229,42 +226,6 @@ public class MubelAutoConfiguration {
                 .client(client)
                 .executor(executor)
                 .build();
-    }
-
-    @Bean
-    @Lazy
-    @ConditionalOnMissingBean
-    public ScheduledEventsWorker scheduledEventsWorker(
-            EventDataMapper mapper,
-            ScheduledEventsSubscriptionFactory subscriptionFactory
-    ) {
-        return ScheduledEventsWorker.builder()
-                .mapper(mapper)
-                .subscriptionFactory(subscriptionFactory)
-                .build();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    @ConditionalOnBean({ScheduledEventsConfig.class})
-    public ScheduledEventsManager scheduledEventsManager(
-            List<ScheduledEventsConfig<?>> configs,
-            ScheduledEventsWorker worker,
-            @Qualifier("mubelTaskExecutor") Executor executor
-    ) {
-        return ScheduledEventsManager.builder()
-                .configs(configs)
-                .worker(worker)
-                .executor(executor)
-                .build();
-    }
-
-    @Bean
-    @ConditionalOnBean(ScheduledEventsManager.class)
-    public ApplicationListener<ContextRefreshedEvent> scheduledEventsManagerStarter(
-            ScheduledEventsManager scheduledEventsManager
-    ) {
-        return event -> scheduledEventsManager.start();
     }
 
     @Bean("mubelTaskExecutor")

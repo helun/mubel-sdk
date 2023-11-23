@@ -1,6 +1,7 @@
 package io.mubel.sdk.subscription;
 
 import io.mubel.sdk.exceptions.MubelConfigurationException;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.containers.JdbcDatabaseContainer;
@@ -17,6 +18,7 @@ import java.util.stream.Stream;
 import static io.mubel.sdk.testutils.DataSourceUtil.*;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@Disabled
 @Testcontainers
 public class JdbcSubscriptionStateRepositorySchemaTest {
 

@@ -15,6 +15,15 @@ public interface EventStore {
     void append(List<EventDataInput> events);
 
     /**
+     * Append events to the event store.
+     * Any scheduled events or deadlines will be registered for later publishing.
+     * Any cancel ids will be used to cancel any scheduled events or deadlines.
+     *
+     * @param appendRequest
+     */
+    void append(AppendRequest appendRequest);
+
+    /**
      * @param streamId The stream id of the aggregate to get events for.
      * @return The events for the aggregate with the given stream id.
      */
@@ -26,5 +35,4 @@ public interface EventStore {
      * @return The events for the aggregate with the given stream id and version.
      */
     List<EventData> get(String streamId, int version);
-
 }

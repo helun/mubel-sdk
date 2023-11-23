@@ -7,11 +7,13 @@ import io.mubel.sdk.EventNamingStrategy;
 import io.mubel.sdk.EventTypeRegistry;
 import io.mubel.sdk.IdGenerator;
 import io.mubel.sdk.codec.JacksonJsonEventDataCodec;
+import io.mubel.sdk.eventstore.AppendRequest;
 import io.mubel.sdk.eventstore.EventStore;
 import io.mubel.sdk.exceptions.EventStreamNotFoundException;
 import io.mubel.sdk.fixtures.TestAggregate;
 import io.mubel.sdk.fixtures.TestCommands;
 import io.mubel.sdk.fixtures.TestEvents;
+import io.mubel.sdk.scheduled.ExpiredDeadline;
 import org.assertj.core.api.AbstractIntegerAssert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,7 +58,7 @@ class AggregateInvocationServiceTest {
                 .hasSize(1)
                 .first()
                 .satisfies(event -> assertThat(event).isInstanceOf(TestEvents.EventA.class));
-        verify(eventStore).append(ArgumentMatchers.anyList());
+        verify(eventStore).append(ArgumentMatchers.any(AppendRequest.class));
     }
 
     private TestAggregateInvocationService getService() {
@@ -71,7 +73,7 @@ class AggregateInvocationServiceTest {
         assertThat(result.newEventCount()).isEqualTo(1);
         assertThat(result.newVersion()).isEqualTo(0);
         assertThat(result.oldVersion()).isEqualTo(-1);
-        verify(eventStore).append(ArgumentMatchers.anyList());
+        verify(eventStore).append(ArgumentMatchers.any(AppendRequest.class));
     }
 
     @Test
@@ -119,6 +121,14 @@ class AggregateInvocationServiceTest {
         final var service = getService();
         final var result = service.findState(UUID.randomUUID());
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void handleDeadline() {
+        final var existing = setupExistingStream();
+        final var service = getService();
+        service.accept(new ExpiredDeadline(UUID.fromString(existing.getStreamId()), ""));
+        verify(eventStore).append(ArgumentMatchers.any(AppendRequest.class));
     }
 
     private static AbstractIntegerAssert<?> assertState(TestAggregate aggregate) {

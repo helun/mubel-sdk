@@ -1,32 +1,20 @@
 package io.mubel.sdk.scheduled;
 
 import java.util.Set;
-import java.util.function.Consumer;
 
-public record ScheduledEventsConfig<T>(
-        Consumer<T> consumer,
-        Class<T> eventBaseClass,
+public record ScheduledEventsConfig(
         Set<String> categories
 ) {
 
-    public static <T> ScheduledEventsConfig<T> forAllCategories(
-            Consumer<T> consumer,
-            Class<T> eventBaseClass
-    ) {
-        return new ScheduledEventsConfig<>(
-                consumer,
-                eventBaseClass,
+    public static ScheduledEventsConfig forAllCategories() {
+        return new ScheduledEventsConfig(
                 Set.of()
         );
     }
 
-    public static <T> ScheduledEventsConfig<T> forCategories(
-            Consumer<T> consumer,
-            Class<T> eventBaseClass,
+    public static <T> ScheduledEventsConfig forCategories(
             String... categories) {
-        return new ScheduledEventsConfig<>(
-                consumer,
-                eventBaseClass,
+        return new ScheduledEventsConfig(
                 Set.of(categories)
         );
     }

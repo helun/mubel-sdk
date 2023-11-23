@@ -31,7 +31,18 @@ public class DefaultEventStore implements EventStore {
         client.append(
                 AppendRequest.newBuilder()
                         .setEsid(eventStoreId)
-                        .addAllEvents(events)
+                        .addAllEvent(events)
+                        .build()
+        );
+    }
+
+    @Override
+    public void append(io.mubel.sdk.eventstore.AppendRequest request) {
+        client.append(
+                AppendRequest.newBuilder()
+                        .setEsid(eventStoreId)
+                        .addAllEvent(request.events())
+                        .addAllScheduledEvent(request.scheduledEvents())
                         .build()
         );
     }
@@ -44,7 +55,7 @@ public class DefaultEventStore implements EventStore {
                         .setStreamId(streamId)
                         .build()
         );
-        return response.getEventsList();
+        return response.getEventList();
     }
 
     @Override
@@ -55,7 +66,7 @@ public class DefaultEventStore implements EventStore {
                         .setStreamId(streamId)
                         .build()
         );
-        return response.getEventsList();
+        return response.getEventList();
     }
 
     public static class Builder {

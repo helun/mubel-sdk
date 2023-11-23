@@ -136,7 +136,7 @@ class AggregateFixtureTest {
                 fixture.when(new TestCommands.ReturnNullCommand())
                         .expectEvents(new TestEvents.EventA("a value", 0))
         ).isInstanceOf(CommandHandlerException.class)
-                .hasMessageContaining("Caught exception while invoking onCommand");
+                .hasMessageContaining("Caught exception while invoking");
     }
 
 }

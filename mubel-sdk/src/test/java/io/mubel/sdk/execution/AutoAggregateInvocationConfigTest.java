@@ -20,11 +20,11 @@ class AutoAggregateInvocationConfigTest {
                 TestEvents.class,
                 TestCommands.class
         ));
-        final var events = commandExecutor.execute(
+        final var handlerResult = commandExecutor.execute(
                 List.of(new TestEvents.EventA("value", 0)),
                 new TestCommands.CommandA("value")
         );
-        assertThat(events)
+        assertThat(handlerResult.events())
                 .hasSize(1)
                 .first()
                 .satisfies(event -> {
@@ -41,11 +41,11 @@ class AutoAggregateInvocationConfigTest {
                 TestEvents.class,
                 TestCommands.class
         ));
-        final var events = commandExecutor.execute(
+        final var handlerResult = commandExecutor.execute(
                 List.of(new TestEvents.EventA("value", 0)),
                 new TestCommands.CommandA("value")
         );
-        assertThat(events)
+        assertThat(handlerResult.events())
                 .hasSize(1)
                 .first()
                 .satisfies(event -> {
@@ -62,11 +62,11 @@ class AutoAggregateInvocationConfigTest {
                 TestEvents.class,
                 TestCommands.class
         ));
-        final var events = commandExecutor.execute(
+        final var handlerResult = commandExecutor.execute(
                 List.of(new TestEvents.EventA("value", 0)),
                 new TestCommands.CommandC()
         );
-        assertThat(events)
+        assertThat(handlerResult.events())
                 .hasSize(1)
                 .first()
                 .satisfies(event -> {
@@ -74,6 +74,27 @@ class AutoAggregateInvocationConfigTest {
                     var eventA = (TestEvents.EventA) event;
                     assertThat(eventA.processedEventCount()).isEqualTo(1);
                 });
+    }
+
+    @Test
+    void handlerWithDeadline() {
+        final var commandExecutor = new CommandExecutor<>(AutoAggregateInvocationConfig.of(
+                WithoutDispatchMethodsAggregate.class,
+                TestEvents.class,
+                TestCommands.class
+        ));
+        
+        final var handlerResult = commandExecutor.execute(
+                List.of(),
+                new TestCommands.CommandB()
+        );
+
+        assertThat(handlerResult.events())
+                .first()
+                .isInstanceOf(TestEvents.EventB.class)
+                .extracting(event -> ((TestEvents.EventB) event).deadlineId())
+                .isEqualTo(handlerResult.deadlines().get(0).id());
+
     }
 
     @Test

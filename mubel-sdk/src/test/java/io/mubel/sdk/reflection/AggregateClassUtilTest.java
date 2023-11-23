@@ -2,8 +2,12 @@ package io.mubel.sdk.reflection;
 
 import io.mubel.sdk.fixtures.*;
 import io.mubel.sdk.internal.reflection.AggregateClassUtil;
+import io.mubel.sdk.scheduled.ExpiredDeadline;
 import org.junit.jupiter.api.Test;
 
+import java.util.UUID;
+
+import static io.mubel.sdk.annotation.DeadlineHandler.DEFAULT_DEADLINE_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AggregateClassUtilTest {
@@ -102,5 +106,42 @@ class AggregateClassUtilTest {
         ).isNotEmpty();
     }
 
+    @Test
+    void catchUnmatchedNameDeadlineHandler() {
+        assertThat(AggregateClassUtil.findDeadlineHandler(
+                TestAggregate.class,
+                new ExpiredDeadline(UUID.randomUUID(), "test-deadline"))
+        ).hasValueSatisfying(method -> assertThat(method.getName())
+                .isEqualTo("onDeadline")
+        );
+    }
+
+    @Test
+    void allDeadlineHandler() {
+        assertThat(AggregateClassUtil.findDeadlineHandler(
+                TestAggregate.class,
+                new ExpiredDeadline(UUID.randomUUID(), DEFAULT_DEADLINE_NAME))
+        ).hasValueSatisfying(method -> assertThat(method.getName())
+                .isEqualTo("onDeadline")
+        );
+    }
+
+    @Test
+    void namedDeadlineHandler() {
+        assertThat(AggregateClassUtil.findDeadlineHandler(
+                TestAggregate.class,
+                new ExpiredDeadline(UUID.randomUUID(), "named-deadline"))
+        ).hasValueSatisfying(method -> assertThat(method.getName())
+                .isEqualTo("onNamedDeadline")
+        );
+    }
+
+    @Test
+    void deadlineHandlerDoesNotExists() {
+        assertThat(AggregateClassUtil.findDeadlineHandler(
+                String.class,
+                new ExpiredDeadline(UUID.randomUUID(), "dl name"))
+        ).isEmpty();
+    }
 
 }

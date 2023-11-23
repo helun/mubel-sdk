@@ -74,7 +74,7 @@ public class AggregateFixture<T> {
                 .resolveCommandHandler(state)
                 .apply(command);
         given(result);
-        this.actualEvents = result;
+        this.actualEvents = result.events();
         commandExecuted = true;
         return this;
     }
