@@ -1,6 +1,7 @@
 package io.mubel.sdk.internal.reflection;
 
 import io.mubel.sdk.annotation.DeadlineHandler;
+import io.mubel.sdk.scheduled.ExpiredDeadline;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -13,9 +14,10 @@ public final class DeadlineHandlerFinder {
 
     public static Predicate<Method> finder() {
         return ClassUtil.PUBLIC_METHOD
-                .and(ClassUtil.methodHasAnnotation(io.mubel.sdk.annotation.DeadlineHandler.class))
-                .and(ClassUtil.hasNoArguments())
-                .and(ClassUtil.methodHasReturnType(List.class)
+                .and(ClassUtil.methodHasAnnotation(DeadlineHandler.class))
+                .and(ClassUtil.hasNoArguments()
+                        .or(ClassUtil.methodHasArgumentOfType(ExpiredDeadline.class))
+                ).and(ClassUtil.methodHasReturnType(List.class)
                         .or(ClassUtil.hasEventLikeReturnType()));
     }
 

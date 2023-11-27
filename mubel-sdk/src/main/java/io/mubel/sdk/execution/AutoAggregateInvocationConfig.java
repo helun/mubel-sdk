@@ -3,8 +3,9 @@ package io.mubel.sdk.execution;
 import io.mubel.sdk.HandlerResult;
 import io.mubel.sdk.exceptions.CommandHandlerException;
 import io.mubel.sdk.exceptions.EventHandlerException;
-import io.mubel.sdk.exceptions.NoCommandHandlerFoundException;
+import io.mubel.sdk.exceptions.HandlerNotFoundException;
 import io.mubel.sdk.internal.reflection.AggregateClassUtil;
+import io.mubel.sdk.scheduled.ExpiredDeadline;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -43,21 +44,26 @@ public class AutoAggregateInvocationConfig {
         return (C command) ->
                 AggregateClassUtil.findCommandHandler(aggregateClass, command.getClass())
                         .map(handler -> (HandlerResult<E>) invokeCommandHandler(aggregateInstance, command, handler))
-                        .orElseThrow(() -> new NoCommandHandlerFoundException("No command handler found for " + command.getClass()));
+                        .orElseThrow(() -> HandlerNotFoundException.forCommand("No command handler found for " + command.getClass()));
     }
 
     @SuppressWarnings("unchecked")
     private static <T, E> DeadlineDispatcher<T, E> reflectionDeadlineDispatcher(Class<T> aggregateClass) {
         return (aggregateInstance, deadline) ->
                 AggregateClassUtil.findDeadlineHandler(aggregateClass, deadline)
-                        .map(handler -> (HandlerResult<E>) invokeDeadlineHandler(aggregateInstance, handler))
-                        .orElseThrow(() -> new NoCommandHandlerFoundException("No deadline handler found for " + deadline.deadlineName()));
+                        .map(handler -> (HandlerResult<E>) invokeDeadlineHandler(aggregateInstance, handler, deadline))
+                        .orElseThrow(() -> HandlerNotFoundException.forDeadline("No deadline handler found for " + deadline.deadlineName()));
     }
 
     public static <T, E> Consumer<E> reflectionEventDispatcher(Class<T> aggregateClass, T aggregateInstance) {
         return (E event) ->
                 AggregateClassUtil.findEventHandler(aggregateClass, event.getClass())
-                        .ifPresent(m -> invokeEventHandler(aggregateInstance, event, m));
+                        .ifPresentOrElse(
+                                m -> invokeEventHandler(aggregateInstance, event, m),
+                                () -> {
+                                    throw HandlerNotFoundException.forEvent("No event handler found for " + event.getClass());
+                                }
+                        );
     }
 
     private static <T, E> Object invokeEventHandler(T aggregateInstance, E event, Method eventHandler) {
@@ -78,9 +84,14 @@ public class AutoAggregateInvocationConfig {
         }
     }
 
-    private static <T, E> HandlerResult<E> invokeDeadlineHandler(T aggregateInstance, Method deadlineHandler) {
+    private static <T, E> HandlerResult<E> invokeDeadlineHandler(T aggregateInstance, Method deadlineHandler, ExpiredDeadline deadline) {
         try {
-            final var result = deadlineHandler.invoke(aggregateInstance);
+            final Object result;
+            if (deadlineHandler.getParameterCount() == 1) {
+                result = deadlineHandler.invoke(aggregateInstance, deadline);
+            } else {
+                result = deadlineHandler.invoke(aggregateInstance);
+            }
             return toHandlerResult(result);
         } catch (Exception e) {
             throw new CommandHandlerException(formatHandlerErrorMessage(aggregateInstance, deadlineHandler), e);

@@ -80,11 +80,11 @@ class ClassUtil {
         return method -> method.getReturnType() == void.class;
     }
 
-    static Predicate<? super Method> hasEventLikeReturnType() {
+    static Predicate<Method> hasEventLikeReturnType() {
         return method -> !IRRELEVANT_RETURN_TYPES.contains(method.getReturnType());
     }
 
-    public static Predicate<? super Method> hasNoArguments() {
+    public static Predicate<Method> hasNoArguments() {
         return method -> method.getParameterCount() == 0;
     }
 }

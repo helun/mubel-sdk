@@ -3,6 +3,7 @@ package io.mubel.sdk.fixtures;
 import io.mubel.sdk.Deadline;
 import io.mubel.sdk.HandlerResult;
 import io.mubel.sdk.annotation.CommandHandler;
+import io.mubel.sdk.annotation.EventHandler;
 
 import java.util.List;
 
@@ -32,6 +33,11 @@ public class WithoutDispatchMethodsAggregate {
         return HandlerResult.of(event)
                 .deadline(deadline)
                 .build();
+    }
+
+    @EventHandler
+    public void handle(TestEvents e) {
+
     }
 
 }

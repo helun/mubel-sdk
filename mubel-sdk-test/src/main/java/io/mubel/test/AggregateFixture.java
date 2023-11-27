@@ -1,7 +1,12 @@
 package io.mubel.test;
 
+import io.mubel.sdk.Deadline;
+import io.mubel.sdk.HandlerResult;
 import io.mubel.sdk.execution.AggregateInvocationConfig;
+import io.mubel.test.internal.AggregateTestExecutor;
 
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -11,25 +16,24 @@ import static org.hamcrest.Matchers.*;
 
 public class AggregateFixture<T> {
 
-    private List<Object> actualEvents;
-    private final AggregateInvocationConfig<T, Object, Object> config;
-    private final T state;
-    private boolean commandExecuted = false;
+    private final AggregateTestExecutor<T> executor;
+
 
     public AggregateFixture(AggregateInvocationConfig<T, Object, Object> config) {
-        this.config = config;
-        this.state = config.aggregateSupplier().get();
+        this.executor = new AggregateTestExecutor<>(config);
+    }
+
+    public AggregateFixture<T> givenHandlerResult(HandlerResult<?> result) {
+        return this;
     }
 
     public AggregateFixture<T> given(Object... events) {
-        return given(List.of(events));
+        executor.applyEvents(Arrays.asList(events));
+        return this;
     }
 
     public AggregateFixture<T> given(List<Object> events) {
-        final var dispatcher = config.eventDispatcher().resolveEventHandler(state);
-        for (final var event : events) {
-            dispatcher.accept(event);
-        }
+        executor.applyEvents(events);
         return this;
     }
 
@@ -42,7 +46,10 @@ public class AggregateFixture<T> {
      * @return
      */
     public AggregateFixture<T> givenCommands(Object... commands) {
-        return givenCommands(List.of(commands));
+        for (final var command : commands) {
+            executor.applyCommand(command);
+        }
+        return this;
     }
 
     /**
@@ -54,10 +61,8 @@ public class AggregateFixture<T> {
      * @return
      */
     public AggregateFixture<T> givenCommands(List<Object> commands) {
-        final var cmdHandler = config.commandDispatcher().resolveCommandHandler(state);
-        for (final var cmd : commands) {
-            final var result = cmdHandler.apply(cmd);
-            given(result);
+        for (final var command : commands) {
+            executor.applyCommand(command);
         }
         return this;
     }
@@ -70,12 +75,14 @@ public class AggregateFixture<T> {
      * @return
      */
     public AggregateFixture<T> when(Object command) {
-        final var result = config.commandDispatcher()
-                .resolveCommandHandler(state)
-                .apply(command);
-        given(result);
-        this.actualEvents = result.events();
-        commandExecuted = true;
+        executor.setCheckPoint();
+        executor.applyAndRecordCommand(command);
+        return this;
+    }
+
+    public AggregateFixture<T> whenTimeElapses(Duration duration) {
+        executor.setCheckPoint();
+        executor.advanceTimeBy(duration);
         return this;
     }
 
@@ -92,8 +99,7 @@ public class AggregateFixture<T> {
      */
     public AggregateFixture<T> expectEvents(Object... events) {
         assertCommandHasBeenExecuted();
-        assertCommandHandlerReturnValue();
-        assertThat("expectEvents", actualEvents, hasItems(events));
+        assertThat("expectEvents", executor.events(), hasItems(events));
         return this;
     }
 
@@ -104,8 +110,7 @@ public class AggregateFixture<T> {
      */
     public AggregateFixture<T> expectNoEvents() {
         assertCommandHasBeenExecuted();
-        assertCommandHandlerReturnValue();
-        assertThat("expectNoEvents", actualEvents, hasSize(0));
+        assertThat("expectNoEvents", executor.events(), hasSize(0));
         return this;
     }
 
@@ -117,8 +122,7 @@ public class AggregateFixture<T> {
      */
     public AggregateFixture<T> expectEventCount(int count) {
         assertCommandHasBeenExecuted();
-        assertCommandHandlerReturnValue();
-        assertThat("expectEventCount", actualEvents, hasSize(count));
+        assertThat("expected event count", executor.events(), hasSize(count));
         return this;
     }
 
@@ -131,8 +135,25 @@ public class AggregateFixture<T> {
      */
     public AggregateFixture<T> expectEventsSatisfies(Consumer<List<?>> eventConsumer) {
         assertCommandHasBeenExecuted();
-        assertCommandHandlerReturnValue();
-        eventConsumer.accept(actualEvents);
+        eventConsumer.accept(executor.events());
+        return this;
+    }
+
+    public AggregateFixture<T> expectNoDeadlines() {
+        assertCommandHasBeenExecuted();
+        assertThat("expectNoDeadlines", executor.deadlines(), hasSize(0));
+        return this;
+    }
+
+    public AggregateFixture<T> expectDeadlineCount(int count) {
+        assertCommandHasBeenExecuted();
+        assertThat("expected deadline count", executor.deadlines(), hasSize(count));
+        return this;
+    }
+
+    public AggregateFixture<T> expectDeadlinesSatisfies(Consumer<List<Deadline>> deadlineConsumer) {
+        assertCommandHasBeenExecuted();
+        deadlineConsumer.accept(executor.deadlines());
         return this;
     }
 
@@ -144,11 +165,11 @@ public class AggregateFixture<T> {
      */
     public AggregateFixture<T> expectAnyEventSatisfies(Consumer<Object> eventConsumer) {
         assertCommandHasBeenExecuted();
-        assertCommandHandlerReturnValue();
-        assertThat("at least one event is expected", actualEvents, hasSize(greaterThan(0)));
+        final var events = executor.events();
+        assertThat("at least one event is expected", events, hasSize(greaterThan(0)));
         AssertionError lastError = null;
         boolean success = false;
-        for (final var event : actualEvents) {
+        for (final var event : events) {
             try {
                 eventConsumer.accept(event);
                 success = true;
@@ -163,6 +184,14 @@ public class AggregateFixture<T> {
         return this;
     }
 
+    public AggregateFixture<T> expectLastEventSatisfies(Consumer<Object> eventConsumer) {
+        assertCommandHasBeenExecuted();
+        final var events = executor.events();
+        assertThat("at least one event is expected", events, hasSize(greaterThan(0)));
+        eventConsumer.accept(events.getLast());
+        return this;
+    }
+
     /**
      * Assert that the aggregate state satisfies the given condition verified by the stateConsumer
      *
@@ -170,15 +199,12 @@ public class AggregateFixture<T> {
      * @return
      */
     public AggregateFixture<T> state(Consumer<T> condition) {
-        condition.accept(state);
+        condition.accept(executor.state());
         return this;
     }
 
-    private void assertCommandHandlerReturnValue() {
-        assertThat("Aggregate should return a non null result", actualEvents, notNullValue());
+    private void assertCommandHasBeenExecuted() {
+        assertThat("No command has been executed", executor.executionCount(), greaterThan(0));
     }
 
-    private void assertCommandHasBeenExecuted() {
-        assertThat("No command has been executed", commandExecuted);
-    }
 }

@@ -3,10 +3,12 @@ package io.mubel.test;
 import io.mubel.fixtures.TestAggregate;
 import io.mubel.fixtures.TestCommands;
 import io.mubel.fixtures.TestEvents;
+import io.mubel.sdk.Deadline;
 import io.mubel.sdk.exceptions.CommandHandlerException;
 import io.mubel.sdk.execution.AutoAggregateInvocationConfig;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,7 +19,7 @@ class AggregateFixtureTest {
     AggregateFixture<TestAggregate> fixture = new AggregateFixture<>(
             AutoAggregateInvocationConfig.of(TestAggregate.class)
     );
-    TestCommands.CommandA command = new TestCommands.CommandA("a value");
+    TestCommands.BasicCommand command = new TestCommands.BasicCommand("a value");
 
     @Test
     void expectEvents() {
@@ -36,7 +38,7 @@ class AggregateFixtureTest {
         assertThatThrownBy(() -> fixture.when(command)
                 .expectEventCount(0))
                 .isInstanceOf(AssertionError.class)
-                .hasMessageContaining("expectEventCount");
+                .hasMessageContaining("expected event count");
     }
 
     @Test
@@ -137,6 +139,31 @@ class AggregateFixtureTest {
                         .expectEvents(new TestEvents.EventA("a value", 0))
         ).isInstanceOf(CommandHandlerException.class)
                 .hasMessageContaining("Caught exception while invoking");
+    }
+
+    @Test
+    void timeElapses() {
+        fixture.when(new TestCommands.DeadlineSchedulingCommand())
+                .expectDeadlinesSatisfies(deadlines -> assertThat(deadlines)
+                        .hasSize(1)
+                        .first()
+                        .extracting(Deadline::name)
+                        .isEqualTo("deadline"))
+                .whenTimeElapses(Duration.ofSeconds(1))
+                .expectLastEventSatisfies(event -> assertThat(event)
+                        .isInstanceOf(TestEvents.DeadlineExpired.class)
+                        .extracting("value")
+                        .isEqualTo("deadline"));
+    }
+
+    @Test
+    void deadlineCancelled() {
+        fixture.when(new TestCommands.DeadlineSchedulingCommand())
+                .expectDeadlineCount(1)
+                .expectLastEventSatisfies(event -> assertThat(event).isInstanceOf(TestEvents.EventWithDeadlineRef.class))
+                .when(new TestCommands.DeadlineCancellingCommand())
+                .whenTimeElapses(Duration.ofSeconds(1))
+                .expectNoEvents();
     }
 
 }
