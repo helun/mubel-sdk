@@ -136,7 +136,7 @@ public class MubelAutoConfiguration {
     @ConditionalOnBean({MubelClient.class, Executor.class})
     public SubscriptionFactory subscriptionFactory(
             MubelClient client,
-            @Qualifier("mubelTaskExecutor") Executor executor
+            Executor executor
     ) {
         return SubscriptionFactory.builder()
                 .client(client)
@@ -198,7 +198,7 @@ public class MubelAutoConfiguration {
     public SubscriptionManager subscriptionManager(
             List<SubscriptionConfig<?>> subscriptionConfigs,
             SubscriptionWorker subscriptionWorker,
-            @Qualifier("mubelTaskExecutor") Executor executor
+            Executor executor
     ) {
         return SubscriptionManager.builder()
                 .configs(subscriptionConfigs)
@@ -220,7 +220,7 @@ public class MubelAutoConfiguration {
     @ConditionalOnMissingBean
     public ScheduledEventsSubscriptionFactory scheduledEventsSubscriptionFactory(
             MubelClient client,
-            @Qualifier("mubelTaskExecutor") Executor executor
+            Executor executor
     ) {
         return ScheduledEventsSubscriptionFactory.builder()
                 .client(client)
@@ -228,14 +228,12 @@ public class MubelAutoConfiguration {
                 .build();
     }
 
-    @Bean("mubelTaskExecutor")
     @ConditionalOnMissingBean
     @ConditionalOnJava(range = ConditionalOnJava.Range.EQUAL_OR_NEWER, value = JavaVersion.TWENTY_ONE)
     public Executor virtialThreadsTaskExecutor() {
         return Executors.newVirtualThreadPerTaskExecutor();
     }
 
-    @Bean("mubelTaskExecutor")
     @ConditionalOnMissingBean
     @ConditionalOnJava(range = ConditionalOnJava.Range.OLDER_THAN, value = JavaVersion.TWENTY_ONE)
     public Executor taskExecutor() {

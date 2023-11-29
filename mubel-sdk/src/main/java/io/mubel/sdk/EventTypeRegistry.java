@@ -36,7 +36,7 @@ public final class EventTypeRegistry {
                 return aClass;
             }
         }
-        throw new MubelConfigurationException("No class found for event type: %s".formatted(typeName));
+        throw new MubelConfigurationException("No class found for event type: '%s'".formatted(typeName));
     }
 
     public String getTypeNameForClass(Class<?> eventClass) {
@@ -58,7 +58,7 @@ public final class EventTypeRegistry {
 
         private final List<EventNamingStrategy> namingStrategies = new ArrayList<>();
 
-        public Builder () {
+        public Builder() {
 
         }
 
