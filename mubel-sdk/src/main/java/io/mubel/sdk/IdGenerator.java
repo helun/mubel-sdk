@@ -10,9 +10,9 @@ public class IdGenerator {
     private static final IdGenerator DEFAULT = createDefaultGenerator();
 
     private static IdGenerator createDefaultGenerator() {
-        final var defaultType = System.getProperty("mubel.id.generator", "timebased");
+        final var defaultType = System.getProperty("mubel.id.generator", "ordered");
         return switch (defaultType) {
-            case "timebased" -> timebasedGenerator();
+            case "ordered" -> timebasedGenerator();
             case "random" -> randomGenerator();
             default -> throw new IllegalArgumentException("Unknown id generator type: " + defaultType);
         };
@@ -26,11 +26,11 @@ public class IdGenerator {
     }
 
     public static IdGenerator timebasedGenerator() {
-        return new IdGenerator(Generators.timeBasedGenerator());
+        return new IdGenerator(Generators.timeBasedReorderedGenerator());
     }
 
     public static IdGenerator randomGenerator() {
-        return new IdGenerator(Generators.randomBasedGenerator());
+        return new IdGenerator(Generators.timeBasedEpochGenerator());
     }
 
     public UUID generate() {

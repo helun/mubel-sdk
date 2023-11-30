@@ -94,7 +94,7 @@ public class MubelAutoConfiguration {
     @Lazy
     @ConditionalOnMissingBean
     public IdGenerator idGenerator(MubelProperties properties) {
-        return properties.getIdGenerator() == MubelProperties.IdGenerationStrategy.TIMEBASED ?
+        return properties.getIdGenerator() == MubelProperties.IdGenerationStrategy.ORDERED ?
                 IdGenerator.timebasedGenerator() : IdGenerator.randomGenerator();
     }
 

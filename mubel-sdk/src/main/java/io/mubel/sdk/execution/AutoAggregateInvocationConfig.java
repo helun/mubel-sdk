@@ -52,7 +52,11 @@ public class AutoAggregateInvocationConfig {
         return (aggregateInstance, deadline) ->
                 AggregateClassUtil.findDeadlineHandler(aggregateClass, deadline)
                         .map(handler -> (HandlerResult<E>) invokeDeadlineHandler(aggregateInstance, handler, deadline))
-                        .orElseThrow(() -> HandlerNotFoundException.forDeadline("No deadline handler found for " + deadline.deadlineName()));
+                        .orElseThrow(() -> HandlerNotFoundException
+                                .forDeadline("No deadline handler found for deadline '%s'"
+                                        .formatted(deadline.deadlineName())
+                                )
+                        );
     }
 
     public static <T, E> Consumer<E> reflectionEventDispatcher(Class<T> aggregateClass, T aggregateInstance) {

@@ -15,9 +15,9 @@ public class MubelProperties {
      */
     private String eventStoreId;
     /**
-     * The id generation strategy to use. Default TIMEBASED.
+     * The id generation strategy to use. Default ORDERED.
      */
-    private IdGenerationStrategy idGenerator = IdGenerationStrategy.TIMEBASED;
+    private IdGenerationStrategy idGenerator = IdGenerationStrategy.ORDERED;
 
     public URI getUri() {
         return uri;
@@ -44,7 +44,13 @@ public class MubelProperties {
     }
 
     public enum IdGenerationStrategy {
-        TIMEBASED,
+        /**
+         * Generate ids that are sortable by time. This strategy is a good choice for relational databases such as PostgreSql.
+         */
+        ORDERED,
+        /**
+         * Generate ids that are random. This strategy is a good choice for NoSQL databases.
+         */
         RANDOM
     }
 }
