@@ -1,9 +1,9 @@
 package io.mubel.sdk.scheduled;
 
-import java.util.function.Consumer;
+public interface ExpiredDeadlineConsumer {
 
-public interface ExpiredDeadlineConsumer extends Consumer<ExpiredDeadline> {
-
+    void deadlineExpired(ExpiredDeadline event);
+    
     String targetType();
 
 }

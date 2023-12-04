@@ -82,12 +82,20 @@ public class AggregateTestExecutor<T> {
     }
 
     private void applyDeadline(Deadline expiredDeadline) {
-        final var result = config.deadlineDispatcher()
-                .dispatch(state, new ExpiredDeadline(expiredDeadline.id(), expiredDeadline.name()));
+        final var result = config.deadlineDispatcher().dispatch(state, mapExpiredDeadline(expiredDeadline));
+        
         recordedEvents.addAll(result.events());
         commandResults.add(result);
         applyEvents(result.events());
         recordDeadlines(result);
+    }
+
+    private ExpiredDeadline mapExpiredDeadline(Deadline expiredDeadline) {
+        return new ExpiredDeadline(
+                expiredDeadline.id(),
+                expiredDeadline.name(),
+                expiredDeadline.attributes(),
+                clock.instant());
     }
 
     public int executionCount() {

@@ -39,9 +39,10 @@ public class ScheduledEventsSubscriptionFactory {
         executor.execute(() -> {
             LOG.info("Scheduled events subscription starting: {}", getCategoriesString(params.categories()));
             try {
-                final var stream = client.subscribeToScheduledEvents(ScheduledEventsSubscribeRequest.newBuilder()
-                        .addAllCategory(params.categories())
-                        .build());
+                final var stream = client.subscribeToScheduledEvents(
+                        ScheduledEventsSubscribeRequest.newBuilder()
+                                .addAllCategory(params.categories())
+                                .build());
                 while (stream.hasNext()) {
                     final var e = stream.next();
                     offer(buffer, e);
@@ -55,6 +56,7 @@ public class ScheduledEventsSubscriptionFactory {
     }
 
     private static void offer(BlockingQueue<ScheduledEvent> buffer, TriggeredEvents e) throws InterruptedException {
+        LOG.debug("Received scheduled events: {}", e.getEventList().size());
         for (var event : e.getEventList()) {
             while (!buffer.offer(event, 1, TimeUnit.MINUTES)) {
                 LOG.warn("Buffer is full, retrying");

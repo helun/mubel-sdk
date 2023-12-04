@@ -2,6 +2,7 @@ package io.mubel.sdk;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
+import io.mubel.sdk.internal.Constants;
 
 import java.util.UUID;
 
@@ -10,7 +11,7 @@ public class IdGenerator {
     private static final IdGenerator DEFAULT = createDefaultGenerator();
 
     private static IdGenerator createDefaultGenerator() {
-        final var defaultType = System.getProperty("mubel.id.generator", "ordered");
+        final var defaultType = System.getProperty(Constants.ID_GENERATOR_TYPE_KEY, "ordered");
         return switch (defaultType) {
             case "ordered" -> timebasedGenerator();
             case "random" -> randomGenerator();

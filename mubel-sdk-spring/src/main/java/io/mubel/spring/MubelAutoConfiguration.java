@@ -13,6 +13,9 @@ import io.mubel.sdk.codec.JacksonJsonEventDataCodec;
 import io.mubel.sdk.eventstore.DefaultEventStore;
 import io.mubel.sdk.eventstore.EventStore;
 import io.mubel.sdk.eventstore.EventStoreProvisioner;
+import io.mubel.sdk.internal.Constants;
+import io.mubel.sdk.scheduled.ExpiredDeadlineConsumer;
+import io.mubel.sdk.scheduled.ExpiredDeadlineHandler;
 import io.mubel.sdk.scheduled.ScheduledEventsSubscriptionFactory;
 import io.mubel.sdk.subscription.*;
 import io.mubel.sdk.tx.TransactionAdapter;
@@ -94,8 +97,13 @@ public class MubelAutoConfiguration {
     @Lazy
     @ConditionalOnMissingBean
     public IdGenerator idGenerator(MubelProperties properties) {
-        return properties.getIdGenerator() == MubelProperties.IdGenerationStrategy.ORDERED ?
-                IdGenerator.timebasedGenerator() : IdGenerator.randomGenerator();
+        if (properties.getIdGenerator() == MubelProperties.IdGenerationStrategy.ORDERED) {
+            System.setProperty(Constants.ID_GENERATOR_TYPE_KEY, "ordered");
+            return IdGenerator.timebasedGenerator();
+        } else {
+            System.setProperty(Constants.ID_GENERATOR_TYPE_KEY, "random");
+            return IdGenerator.randomGenerator();
+        }
     }
 
     @Bean
@@ -213,6 +221,30 @@ public class MubelAutoConfiguration {
             SubscriptionManager subscriptionManager
     ) {
         return event -> subscriptionManager.start();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ExpiredDeadlineHandler expiredDeadlineHandler(
+            List<ExpiredDeadlineConsumer> consumers,
+            Executor executor,
+            ScheduledEventsSubscriptionFactory subscriptionFactory,
+            EventDataMapper eventDataMapper
+    ) {
+        return ExpiredDeadlineHandler.builder()
+                .consumers(consumers)
+                .executor(executor)
+                .subscriptionFactory(subscriptionFactory)
+                .eventDataMapper(eventDataMapper)
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnBean(ExpiredDeadlineHandler.class)
+    public ApplicationListener<ContextRefreshedEvent> expiredDeadlineHandlerStarter(
+            ExpiredDeadlineHandler handler
+    ) {
+        return event -> handler.start();
     }
 
     @Bean

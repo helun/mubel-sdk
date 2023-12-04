@@ -53,7 +53,7 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
 
 
     @Override
-    public void accept(ExpiredDeadline expiredDeadline) {
+    public void deadlineExpired(ExpiredDeadline expiredDeadline) {
         final var nnStreamId = parseStreamId(expiredDeadline.targetEntityId());
         final var ctx = InvocationContext.create(nnStreamId);
         final var existingEvents = getExistingEvents(nnStreamId, ctx);

@@ -28,11 +28,11 @@ public class Constrains {
         );
     }
 
-    public static String safe(String input) {
+    public static String safe(String input, String fieldName) {
         return Utils.validate(
                 requireNonNull(input, "Input"),
                 Constrains.SAFE_STRING_PTRN,
-                () -> new IllegalArgumentException("Invalid input. Use 1-255 characters, including letters, numbers, hyphens, and underscores")
+                () -> new IllegalArgumentException("Invalid value for field: %s. Use 1-255 characters, including letters, numbers, hyphens, and underscores".formatted(fieldName))
         );
     }
 

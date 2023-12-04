@@ -22,7 +22,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.UnsupportedEncodingException;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -127,7 +129,7 @@ class AggregateInvocationServiceTest {
     void handleDeadline() {
         final var existing = setupExistingStream();
         final var service = getService();
-        service.accept(new ExpiredDeadline(UUID.fromString(existing.getStreamId()), ""));
+        service.deadlineExpired(new ExpiredDeadline(UUID.fromString(existing.getStreamId()), "", Map.of(), Instant.now()));
         verify(eventStore).append(ArgumentMatchers.any(AppendRequest.class));
     }
 

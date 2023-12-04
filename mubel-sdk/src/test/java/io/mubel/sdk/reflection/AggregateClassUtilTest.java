@@ -5,6 +5,8 @@ import io.mubel.sdk.internal.reflection.AggregateClassUtil;
 import io.mubel.sdk.scheduled.ExpiredDeadline;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import static io.mubel.sdk.annotation.DeadlineHandler.DEFAULT_DEADLINE_NAME;
@@ -110,7 +112,7 @@ class AggregateClassUtilTest {
     void catchUnmatchedNameDeadlineHandler() {
         assertThat(AggregateClassUtil.findDeadlineHandler(
                 TestAggregate.class,
-                new ExpiredDeadline(UUID.randomUUID(), "test-deadline"))
+                new ExpiredDeadline(UUID.randomUUID(), "test-deadline", Map.of(), Instant.now()))
         ).hasValueSatisfying(method -> assertThat(method.getName())
                 .isEqualTo("onDeadline")
         );
@@ -120,7 +122,7 @@ class AggregateClassUtilTest {
     void allDeadlineHandler() {
         assertThat(AggregateClassUtil.findDeadlineHandler(
                 TestAggregate.class,
-                new ExpiredDeadline(UUID.randomUUID(), DEFAULT_DEADLINE_NAME))
+                new ExpiredDeadline(UUID.randomUUID(), DEFAULT_DEADLINE_NAME, Map.of(), Instant.now()))
         ).hasValueSatisfying(method -> assertThat(method.getName())
                 .isEqualTo("onDeadline")
         );
@@ -130,7 +132,7 @@ class AggregateClassUtilTest {
     void namedDeadlineHandler() {
         assertThat(AggregateClassUtil.findDeadlineHandler(
                 TestAggregate.class,
-                new ExpiredDeadline(UUID.randomUUID(), "named-deadline"))
+                new ExpiredDeadline(UUID.randomUUID(), "named-deadline", Map.of(), Instant.now()))
         ).hasValueSatisfying(method -> assertThat(method.getName())
                 .isEqualTo("onNamedDeadline")
         );
@@ -140,7 +142,7 @@ class AggregateClassUtilTest {
     void deadlineHandlerDoesNotExists() {
         assertThat(AggregateClassUtil.findDeadlineHandler(
                 String.class,
-                new ExpiredDeadline(UUID.randomUUID(), "dl name"))
+                new ExpiredDeadline(UUID.randomUUID(), "dl name", Map.of(), Instant.now()))
         ).isEmpty();
     }
 

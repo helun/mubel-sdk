@@ -5,7 +5,10 @@ import io.mubel.sdk.execution.internal.InvocationContext;
 import io.mubel.sdk.fixtures.TestEvents;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.Charset;
+import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,6 +41,36 @@ class EventDataMapperTest {
                 .build();
         final var mappedEvent = eventDataMapper.fromEventData(eventData);
         assertThat(mappedEvent).isEqualTo(eventA);
+    }
+
+    @Test
+    void deadline() {
+        var deadline = Deadline.ofMinutes("a-deadline", 1)
+                .attribute("key", "value")
+                .build();
+
+        var handlerResult = HandlerResult.of(List.of())
+                .deadline(deadline)
+                .build();
+
+        UUID streamId = UUID.randomUUID();
+        var events = eventDataMapper.toScheduledEvent(streamId.toString(), "some.target", handlerResult);
+        assertThat(events)
+                .hasSize(1)
+                .first()
+                .satisfies(se -> {
+                    assertThat(se.getDeadline()).isTrue();
+                    assertThat(se.getTargetEntityId()).isEqualTo(streamId.toString());
+                    assertThat(se.getTargetType()).isEqualTo("some.target");
+                    assertThat(se.getId()).isEqualTo(deadline.id().toString());
+                    assertThat(se.getData().toString(Charset.defaultCharset())).isEqualTo("{\"key\":\"value\"}");
+                });
+
+        var expiredDeadline = eventDataMapper.mapExpiredDeadline(events.get(0), Instant.now());
+        assertThat(expiredDeadline.targetEntityId()).isEqualTo(streamId);
+        assertThat(expiredDeadline.deadlineName()).isEqualTo(deadline.name());
+        assertThat(expiredDeadline.hasAttribute("key")).isTrue();
+        assertThat(expiredDeadline.attribute("key")).isEqualTo("value");
     }
 
 }

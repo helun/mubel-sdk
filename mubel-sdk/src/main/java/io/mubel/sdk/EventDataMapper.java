@@ -7,9 +7,13 @@ import io.mubel.api.grpc.MetaData;
 import io.mubel.api.grpc.ScheduledEvent;
 import io.mubel.sdk.codec.EventDataCodec;
 import io.mubel.sdk.internal.Constants;
+import io.mubel.sdk.scheduled.ExpiredDeadline;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -54,6 +58,22 @@ public class EventDataMapper {
     public Object fromScheduledEvent(ScheduledEvent event) {
         final var eventClass = eventTypeRegistry.getClassForType(event.getType());
         return codec.decode(event.getData().toByteArray(), eventClass);
+    }
+
+    @SuppressWarnings("unchecked")
+    public ExpiredDeadline mapExpiredDeadline(ScheduledEvent event, Instant timestamp) {
+        final Map<String, String> attributes;
+        if (event.getData().isEmpty()) {
+            attributes = null;
+        } else {
+            attributes = codec.decode(event.getData().toByteArray(), Map.class);
+        }
+        return new ExpiredDeadline(
+                UUID.fromString(event.getTargetEntityId()),
+                event.getMetaData().getDataOrDefault(Constants.DEADLINE_NAME_METADATA_KEY, ""),
+                attributes,
+                timestamp
+        );
     }
 
     /**
@@ -103,7 +123,13 @@ public class EventDataMapper {
     }
 
     private ScheduledEvent toScheduledEvent(String streamId, String targetType, Deadline deadline) {
+        var data = ByteString.empty();
+        if (deadline.attributes() != null && !deadline.attributes().isEmpty()) {
+            data = ByteString.copyFrom(codec.encode(deadline.attributes()));
+        }
+
         return ScheduledEvent.newBuilder()
+                .setId(deadline.id().toString())
                 .setTargetEntityId(streamId)
                 .setTargetType(targetType)
                 .setCategory(Constants.DEADLINE_CATEGORY_NAME)
@@ -112,6 +138,7 @@ public class EventDataMapper {
                 .setMetaData(MetaData.newBuilder()
                         .putData(Constants.DEADLINE_NAME_METADATA_KEY, deadline.name())
                         .build())
+                .setData(data)
                 .build();
     }
 
