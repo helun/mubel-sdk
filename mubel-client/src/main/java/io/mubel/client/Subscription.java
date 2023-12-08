@@ -1,13 +1,11 @@
 package io.mubel.client;
 
-import io.mubel.api.grpc.EventData;
-
 import java.util.List;
 
-public interface Subscription {
+public interface Subscription<T> {
 
-    EventData next() throws InterruptedException;
+    T next() throws InterruptedException;
 
-    List<EventData> nextBatch(int size) throws InterruptedException;
+    List<T> nextBatch(int size) throws InterruptedException;
 
 }

@@ -1,7 +1,6 @@
 package io.mubel.client.internal;
 
 import io.grpc.stub.StreamObserver;
-import io.mubel.api.grpc.EventData;
 import io.mubel.client.Subscription;
 
 import java.util.ArrayList;
@@ -12,9 +11,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class StreamObserverSubscription implements Subscription, StreamObserver<EventData> {
+public class StreamObserverSubscription<T> implements Subscription<T>, StreamObserver<T> {
 
-    private final BlockingQueue<EventData> buffer;
+    private final BlockingQueue<T> buffer;
     private final AtomicReference<Throwable> error = new AtomicReference<>();
     private final AtomicBoolean completed = new AtomicBoolean(false);
 
@@ -23,7 +22,7 @@ public class StreamObserverSubscription implements Subscription, StreamObserver<
     }
 
     @Override
-    public void onNext(EventData value) {
+    public void onNext(T value) {
         try {
             while (!buffer.offer(value, 1, TimeUnit.MINUTES)) {
                 // keep trying
@@ -44,7 +43,7 @@ public class StreamObserverSubscription implements Subscription, StreamObserver<
     }
 
     @Override
-    public EventData next() throws InterruptedException {
+    public T next() throws InterruptedException {
         checkErrors();
         if (completed.get()) {
             return null;
@@ -53,9 +52,9 @@ public class StreamObserverSubscription implements Subscription, StreamObserver<
     }
 
     @Override
-    public List<EventData> nextBatch(int size) throws InterruptedException {
+    public List<T> nextBatch(int size) throws InterruptedException {
         checkErrors();
-        final var batch = new ArrayList<EventData>(size);
+        final var batch = new ArrayList<T>(size);
         if (completed.get()) {
             return batch;
         }

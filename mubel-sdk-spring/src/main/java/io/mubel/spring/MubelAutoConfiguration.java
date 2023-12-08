@@ -16,7 +16,6 @@ import io.mubel.sdk.eventstore.EventStoreProvisioner;
 import io.mubel.sdk.internal.Constants;
 import io.mubel.sdk.scheduled.ExpiredDeadlineConsumer;
 import io.mubel.sdk.scheduled.ExpiredDeadlineHandler;
-import io.mubel.sdk.scheduled.ScheduledEventsSubscriptionFactory;
 import io.mubel.sdk.subscription.*;
 import io.mubel.sdk.tx.TransactionAdapter;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -213,13 +212,13 @@ public class MubelAutoConfiguration {
     public ExpiredDeadlineHandler expiredDeadlineHandler(
             List<ExpiredDeadlineConsumer> consumers,
             Executor executor,
-            ScheduledEventsSubscriptionFactory subscriptionFactory,
+            MubelClient client,
             EventDataMapper eventDataMapper
     ) {
         return ExpiredDeadlineHandler.builder()
                 .consumers(consumers)
                 .executor(executor)
-                .subscriptionFactory(subscriptionFactory)
+                .client(client)
                 .eventDataMapper(eventDataMapper)
                 .build();
     }
@@ -230,19 +229,6 @@ public class MubelAutoConfiguration {
             ExpiredDeadlineHandler handler
     ) {
         return event -> handler.start();
-    }
-
-    @Bean
-    @Lazy
-    @ConditionalOnMissingBean
-    public ScheduledEventsSubscriptionFactory scheduledEventsSubscriptionFactory(
-            MubelClient client,
-            Executor executor
-    ) {
-        return ScheduledEventsSubscriptionFactory.builder()
-                .client(client)
-                .executor(executor)
-                .build();
     }
 
     @ConditionalOnMissingBean

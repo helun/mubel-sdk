@@ -1,6 +1,8 @@
 package io.mubel.sdk.scheduled;
 
-import io.mubel.api.grpc.ScheduledEvent;
+import io.mubel.api.grpc.ScheduledEventsSubscribeRequest;
+import io.mubel.api.grpc.TriggeredEvents;
+import io.mubel.client.MubelClient;
 import io.mubel.sdk.EventDataMapper;
 import io.mubel.sdk.exceptions.MubelConfigurationException;
 import io.mubel.sdk.internal.Constants;
@@ -18,7 +20,7 @@ public class ExpiredDeadlineHandler {
     private static final Logger LOG = LoggerFactory.getLogger(ExpiredDeadlineHandler.class);
     private final List<ExpiredDeadlineConsumer> consumers;
     private final Executor executor;
-    private final ScheduledEventsSubscriptionFactory subscriptionFactory;
+    private final MubelClient client;
     private final EventDataMapper eventDataMapper;
     private final Clock clock;
     private final AtomicBoolean shouldRun = new AtomicBoolean(true);
@@ -26,7 +28,7 @@ public class ExpiredDeadlineHandler {
     private ExpiredDeadlineHandler(Builder b) {
         this.consumers = b.consumers;
         this.executor = b.executor;
-        this.subscriptionFactory = b.subscriptionFactory;
+        this.client = b.client;
         this.eventDataMapper = b.eventDataMapper;
         this.clock = b.clock;
     }
@@ -38,7 +40,11 @@ public class ExpiredDeadlineHandler {
     public void start() {
         executor.execute(() -> {
             LOG.info("Expired deadline handler starting");
-            final var subscription = subscriptionFactory.create(ScheduledEventsConfig.forCategories(Constants.DEADLINE_CATEGORY_NAME));
+            final var subscription = client.subscribeToScheduledEvents(ScheduledEventsSubscribeRequest.newBuilder()
+                            .addCategory(Constants.DEADLINE_CATEGORY_NAME)
+                            .build(),
+                    100
+            );
             try {
                 while (shouldRun.get()) {
                     accept(subscription.next());
@@ -54,13 +60,15 @@ public class ExpiredDeadlineHandler {
         shouldRun.set(false);
     }
 
-    public void accept(ScheduledEvent event) {
-        LOG.debug("Received expired deadline event: {}", event.getId());
-        final var expired = eventDataMapper.mapExpiredDeadline(event, clock.instant());
-        for (final var consumer : consumers) {
-            if (consumer.targetType().equals(event.getTargetType())) {
-                executor.execute(() -> consumer.deadlineExpired(expired));
-                break;
+    public void accept(TriggeredEvents events) {
+        for (final var event : events.getEventList()) {
+            LOG.debug("Received expired deadline event: {}", event.getId());
+            final var expired = eventDataMapper.mapExpiredDeadline(event, clock.instant());
+            for (final var consumer : consumers) {
+                if (consumer.targetType().equals(event.getTargetType())) {
+                    executor.execute(() -> consumer.deadlineExpired(expired));
+                    break;
+                }
             }
         }
     }
@@ -68,7 +76,7 @@ public class ExpiredDeadlineHandler {
     public static class Builder {
         private List<ExpiredDeadlineConsumer> consumers;
         private Executor executor;
-        private ScheduledEventsSubscriptionFactory subscriptionFactory;
+        private MubelClient client;
         private EventDataMapper eventDataMapper;
         private Clock clock;
 
@@ -82,8 +90,8 @@ public class ExpiredDeadlineHandler {
             return this;
         }
 
-        public Builder subscriptionFactory(ScheduledEventsSubscriptionFactory subscriptionFactory) {
-            this.subscriptionFactory = subscriptionFactory;
+        public Builder client(MubelClient subscriptionFactory) {
+            this.client = subscriptionFactory;
             return this;
         }
 
@@ -101,7 +109,7 @@ public class ExpiredDeadlineHandler {
             clock = Objects.requireNonNullElseGet(clock, Clock::systemUTC);
             Utils.requireNonNull(consumers, () -> new MubelConfigurationException("Consumers may not be null"));
             Utils.requireNonNull(executor, () -> new MubelConfigurationException("Executor may not be null"));
-            Utils.requireNonNull(subscriptionFactory, () -> new MubelConfigurationException("Subscription factory may not be null"));
+            Utils.requireNonNull(client, () -> new MubelConfigurationException("Client may not be null"));
             Utils.requireNonNull(eventDataMapper, () -> new MubelConfigurationException("Event data mapper may not be null"));
             return new ExpiredDeadlineHandler(this);
         }

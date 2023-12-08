@@ -7,7 +7,6 @@ import io.grpc.protobuf.ProtoUtils;
 import io.mubel.api.grpc.*;
 import io.mubel.client.internal.StreamObserverSubscription;
 
-import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 
 public class MubelClient {
@@ -59,8 +58,8 @@ public class MubelClient {
         }
     }
 
-    public Subscription subscribe(SubscribeRequest request, int bufferSize) {
-        final var subscription = new StreamObserverSubscription(bufferSize);
+    public Subscription<EventData> subscribe(SubscribeRequest request, int bufferSize) {
+        final var subscription = new StreamObserverSubscription<EventData>(bufferSize);
         asyncStub.subscribe(request, subscription);
         return subscription;
     }
@@ -92,12 +91,10 @@ public class MubelClient {
     /**
      * Subscribe to scheduled events. The subscriber will receive events when they are published.
      */
-    public Iterator<TriggeredEvents> subscribeToScheduledEvents(ScheduledEventsSubscribeRequest request) {
-        try {
-            return blockingStub.subscribeToScheduledEvents(request);
-        } catch (Throwable err) {
-            throw handleFailure(err);
-        }
+    public Subscription<TriggeredEvents> subscribeToScheduledEvents(ScheduledEventsSubscribeRequest request, int bufferSize) {
+        final var subscription = new StreamObserverSubscription<TriggeredEvents>(bufferSize);
+        asyncStub.subscribeToScheduledEvents(request, subscription);
+        return subscription;
     }
 
     public void cancelScheduledEvents(CancelScheduledEventsRequest request) {
