@@ -10,7 +10,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.net.URI;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,8 +33,8 @@ public class MubelAutoConfigurationTest {
 
     @Test
     void baseCase() {
-        assertThat(properties.getUri())
-                .isEqualTo(URI.create("mubel://localhost:9898"));
+        assertThat(properties.getAddress())
+                .isEqualTo("localhost:9898");
 
         assertThat(eventStore.get(UUID.randomUUID().toString())).isEmpty();
     }

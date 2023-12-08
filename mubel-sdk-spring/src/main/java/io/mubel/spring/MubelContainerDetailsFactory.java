@@ -4,8 +4,6 @@ import org.springframework.boot.testcontainers.service.connection.ContainerConne
 import org.springframework.boot.testcontainers.service.connection.ContainerConnectionSource;
 import org.testcontainers.containers.GenericContainer;
 
-import java.net.URI;
-
 public class MubelContainerDetailsFactory extends ContainerConnectionDetailsFactory<GenericContainer<?>, MubelConnectionDetails> {
 
     public MubelContainerDetailsFactory() {
@@ -21,11 +19,11 @@ public class MubelContainerDetailsFactory extends ContainerConnectionDetailsFact
             implements MubelConnectionDetails {
 
         @Override
-        public URI getUri() {
+        public String getAddress() {
             final var container = this.getContainer();
             final int port = container.getFirstMappedPort();
             final var host = container.getHost();
-            return URI.create(String.format("mubel://%s:%d", host, port));
+            return "%s:%d".formatted(host, port);
         }
 
         public MubelContainerConnectionDetails(ContainerConnectionSource<GenericContainer<?>> source) {

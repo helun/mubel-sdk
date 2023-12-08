@@ -1,29 +1,39 @@
 package io.mubel.client;
 
+import java.util.concurrent.Executor;
+
+import static java.util.Objects.requireNonNull;
+
 public record MubelClientConfig(
-        String host,
-        int port
+        String address,
+        Executor executor
 ) {
     public static Builder newBuilder() {
         return new Builder();
     }
 
     public static class Builder {
-        private String host;
-        private int port;
+        private String address;
+        private Executor executor;
 
-        public Builder host(String s) {
-            this.host = s;
+        public Builder address(String address) {
+            this.address = address;
             return this;
         }
 
-        public Builder port(int p) {
-            this.port = p;
+        public Builder executor(Executor executor) {
+            this.executor = executor;
             return this;
         }
 
         public MubelClientConfig build() {
-            return new MubelClientConfig(host, port);
+            if (requireNonNull(address).isBlank()) {
+                throw new MubelClientException("Address cannot be empty");
+            }
+            return new MubelClientConfig(
+                    address,
+                    executor
+            );
         }
     }
 }

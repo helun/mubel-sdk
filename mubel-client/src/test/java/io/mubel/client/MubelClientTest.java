@@ -20,8 +20,7 @@ class MubelClientTest {
     @BeforeEach
     void setup() {
         client = new MubelClient(MubelClientConfig.newBuilder()
-                .host(mubelContainer.getHost())
-                .port(mubelContainer.getFirstMappedPort())
+                .address("localhost:" + mubelContainer.getMappedPort(9898))
                 .build());
     }
 

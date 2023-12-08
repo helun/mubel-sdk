@@ -1,6 +1,9 @@
 package io.mubel.sdk.subscription;
 
 import io.mubel.api.grpc.EventData;
+import io.mubel.api.grpc.SubscribeRequest;
+import io.mubel.client.MubelClient;
+import io.mubel.client.Subscription;
 import io.mubel.sdk.TestComponents;
 import io.mubel.sdk.fixtures.Fixtures;
 import io.mubel.sdk.fixtures.TestEvents;
@@ -10,7 +13,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
 
@@ -18,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 class SubscriptionWorkerTest {
@@ -27,14 +31,14 @@ class SubscriptionWorkerTest {
 
     SubscriptionStateRepository repository = mock(SubscriptionStateRepository.class);
 
-    SubscriptionFactory factory = mock(SubscriptionFactory.class);
+    MubelClient factory = mock(MubelClient.class);
 
     BlockingQueue<EventData> buffer = new ArrayBlockingQueue<>(100);
 
     TestEventConsumer<TestEvents> eventConsumer = TestComponents.testEventConsumer();
 
     SubscriptionWorker worker = SubscriptionWorker.builder()
-            .subscriptionFactory(factory)
+            .client(factory)
             .stateRepository(repository)
             .eventDataMapper(TestComponents.eventDataMapper())
             .build();
@@ -50,8 +54,24 @@ class SubscriptionWorkerTest {
     @BeforeEach
     void setup() {
         Awaitility.setDefaultTimeout(Duration.ofSeconds(1));
-        when(factory.create(any(), anyLong()))
-                .thenReturn(new Subscription(buffer));
+        when(factory.subscribe(any(SubscribeRequest.class), anyInt()))
+                .thenReturn(new Subscription() {
+                    @Override
+                    public EventData next() throws InterruptedException {
+                        return buffer.take();
+                    }
+
+                    @Override
+                    public List<EventData> nextBatch(int size) throws InterruptedException {
+                        final var batch = new ArrayList<EventData>(size);
+                        buffer.drainTo(batch, size);
+                        if (batch.isEmpty()) {
+                            batch.add(buffer.take());
+                            buffer.drainTo(batch, size - 1);
+                        }
+                        return batch;
+                    }
+                });
     }
 
     @AfterEach

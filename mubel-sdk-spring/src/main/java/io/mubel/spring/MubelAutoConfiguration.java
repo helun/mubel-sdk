@@ -36,7 +36,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
-import java.net.URI;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -60,8 +59,7 @@ public class MubelAutoConfiguration {
     @ConditionalOnBean(MubelConnectionDetails.class)
     public MubelClient mubelClient(MubelConnectionDetails connectionDetails) {
         final var config = MubelClientConfig.newBuilder()
-                .host(connectionDetails.getUri().getHost())
-                .port(connectionDetails.getUri().getPort())
+                .address(connectionDetails.getAddress())
                 .build();
 
         return new MubelClient(config);
@@ -141,19 +139,6 @@ public class MubelAutoConfiguration {
 
     @Bean
     @Lazy
-    @ConditionalOnBean({MubelClient.class, Executor.class})
-    public SubscriptionFactory subscriptionFactory(
-            MubelClient client,
-            Executor executor
-    ) {
-        return SubscriptionFactory.builder()
-                .client(client)
-                .executor(executor)
-                .build();
-    }
-
-    @Bean
-    @Lazy
     @ConditionalOnMissingBean
     @ConditionalOnBean(TransactionTemplate.class)
     public TransactionAdapter springTxTransactionAdapter(TransactionTemplate txTemplate) {
@@ -188,15 +173,15 @@ public class MubelAutoConfiguration {
     @ConditionalOnMissingBean
     @ConditionalOnBean(SubscriptionStateRepository.class)
     public SubscriptionWorker subscriptionWorker(
+            MubelClient client,
             TransactionAdapter transactionAdapter,
             EventDataMapper eventDataMapper,
-            SubscriptionStateRepository subscriptionStateRepository,
-            SubscriptionFactory subscriptionFactory
+            SubscriptionStateRepository subscriptionStateRepository
     ) {
         return SubscriptionWorker.builder()
+                .client(client)
                 .stateRepository(subscriptionStateRepository)
                 .transactionAdapter(transactionAdapter)
-                .subscriptionFactory(subscriptionFactory)
                 .eventDataMapper(eventDataMapper)
                 .build();
     }
@@ -297,9 +282,9 @@ public class MubelAutoConfiguration {
         }
 
         @Override
-        public URI getUri() {
-            URI uri = this.properties.getUri();
-            return (uri != null) ? uri : MubelConnectionDetails.super.getUri();
+        public String getAddress() {
+            var address = this.properties.getAddress();
+            return (address != null) ? address : MubelConnectionDetails.super.getAddress();
         }
     }
 

@@ -5,19 +5,28 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.protobuf.ProtoUtils;
 import io.mubel.api.grpc.*;
+import io.mubel.client.internal.StreamObserverSubscription;
 
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 
 public class MubelClient {
 
-    private final EventServiceGrpc.EventServiceBlockingStub serviceStub;
+    private final EventServiceGrpc.EventServiceBlockingStub blockingStub;
+    private final EventServiceGrpc.EventServiceStub asyncStub;
 
     public MubelClient(MubelClientConfig config) {
         var channel = ManagedChannelBuilder
-                .forAddress(config.host(), config.port())
+                .forTarget(config.address())
+                .executor(config.executor())
+                .enableFullStreamDecompression()
+                .enableRetry()
+                .keepAliveTime(5, TimeUnit.SECONDS)
+                .keepAliveTimeout(1, TimeUnit.SECONDS)
                 .usePlaintext()
                 .build();
-        serviceStub = EventServiceGrpc.newBlockingStub(channel);
+        blockingStub = EventServiceGrpc.newBlockingStub(channel);
+        asyncStub = EventServiceGrpc.newStub(channel);
     }
 
     /**
@@ -25,7 +34,7 @@ public class MubelClient {
      */
     public EventStoreDetails provision(ProvisionEventStoreRequest request) {
         try {
-            return serviceStub.provision(request);
+            return blockingStub.provision(request);
         } catch (Throwable err) {
             throw handleFailure(err);
         }
@@ -36,7 +45,7 @@ public class MubelClient {
      */
     public AppendAck append(AppendRequest request) {
         try {
-            return serviceStub.append(request);
+            return blockingStub.append(request);
         } catch (Throwable err) {
             throw handleFailure(err);
         }
@@ -44,23 +53,21 @@ public class MubelClient {
 
     public GetEventsResponse get(GetEventsRequest request) {
         try {
-            return serviceStub.get(request);
+            return blockingStub.get(request);
         } catch (Throwable err) {
             throw handleFailure(err);
         }
     }
 
-    public Iterator<EventData> subscribe(SubscribeRequest request) {
-        try {
-            return serviceStub.subscribe(request);
-        } catch (Throwable err) {
-            throw handleFailure(err);
-        }
+    public Subscription subscribe(SubscribeRequest request, int bufferSize) {
+        final var subscription = new StreamObserverSubscription(bufferSize);
+        asyncStub.subscribe(request, subscription);
+        return subscription;
     }
 
     public ServiceInfoResponse getServerInfo() {
         try {
-            return serviceStub.serverInfo(GetServiceInfoRequest.newBuilder().build());
+            return blockingStub.serverInfo(GetServiceInfoRequest.newBuilder().build());
         } catch (Throwable err) {
             throw handleFailure(err);
         }
@@ -68,7 +75,7 @@ public class MubelClient {
 
     public DropEventStoreResponse drop(DropEventStoreRequest request) {
         try {
-            return serviceStub.drop(request);
+            return blockingStub.drop(request);
         } catch (Throwable err) {
             throw handleFailure(err);
         }
@@ -76,7 +83,7 @@ public class MubelClient {
 
     public void scheduleEvent(ScheduledEvent event) {
         try {
-            final var empty = serviceStub.scheduleEvent(event);
+            final var empty = blockingStub.scheduleEvent(event);
         } catch (Throwable err) {
             throw handleFailure(err);
         }
@@ -87,7 +94,7 @@ public class MubelClient {
      */
     public Iterator<TriggeredEvents> subscribeToScheduledEvents(ScheduledEventsSubscribeRequest request) {
         try {
-            return serviceStub.subscribeToScheduledEvents(request);
+            return blockingStub.subscribeToScheduledEvents(request);
         } catch (Throwable err) {
             throw handleFailure(err);
         }
@@ -95,7 +102,7 @@ public class MubelClient {
 
     public void cancelScheduledEvents(CancelScheduledEventsRequest request) {
         try {
-            final var empty = serviceStub.cancelScheduledEvents(request);
+            final var empty = blockingStub.cancelScheduledEvents(request);
         } catch (Throwable err) {
             throw handleFailure(err);
         }

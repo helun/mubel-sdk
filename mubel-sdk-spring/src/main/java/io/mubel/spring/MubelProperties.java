@@ -2,14 +2,12 @@ package io.mubel.spring;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-import java.net.URI;
-
 @ConfigurationProperties(prefix = "mubel")
 public class MubelProperties {
     /**
-     * The mubel uri to connect to.
+     * The mubel address to connect to.
      */
-    private URI uri;
+    private String address;
     /**
      * The event store id to use.
      */
@@ -19,12 +17,12 @@ public class MubelProperties {
      */
     private IdGenerationStrategy idGenerator = IdGenerationStrategy.ORDERED;
 
-    public URI getUri() {
-        return uri;
+    public String getAddress() {
+        return address;
     }
 
-    public void setUri(URI uri) {
-        this.uri = uri;
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     public String getEventStoreId() {
