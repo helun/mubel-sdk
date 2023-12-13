@@ -68,6 +68,7 @@ message GetEventsRequest {
 message SubscribeRequest {
   string esid = 1;
   int64 fromSequenceNo = 2;
+  string consumerGroupToken = 3;
 }
 
 message GetEventsResponse {
@@ -179,11 +180,32 @@ message CancelScheduledEventsRequest {
 
 // Subscribe to scheduled events. The subscriber will receive events when they are published.
 message ScheduledEventsSubscribeRequest {
+  string consumerGroup = 1;
   // the categories to subscribe to. If empty, all categories will be subscribed to
-  repeated string category = 1;
+  repeated string category = 2;
+  string consumerGroupToken = 3;
 }
 
 // Contains events that have been triggered.
 message TriggeredEvents {
   repeated ScheduledEvent event = 1;
+}
+
+message Heartbeat {
+  int64 timestamp = 1;
+}
+
+message JoinConsumerGroupRequest {
+  string esid = 1;
+  string consumerGroup = 2;
+}
+
+message LeaveConsumerGroupRequest {
+  string token = 1;
+}
+
+message ConsumerGroupStatus {
+  string groupId = 1;
+  string token = 2;
+  bool leader = 3;
 }

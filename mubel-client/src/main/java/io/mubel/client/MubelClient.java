@@ -5,8 +5,12 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.protobuf.ProtoUtils;
 import io.mubel.api.grpc.*;
+import io.mubel.client.internal.StreamObserverFuture;
 import io.mubel.client.internal.StreamObserverSubscription;
 
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class MubelClient {
@@ -100,6 +104,31 @@ public class MubelClient {
     public void cancelScheduledEvents(CancelScheduledEventsRequest request) {
         try {
             final var empty = blockingStub.cancelScheduledEvents(request);
+        } catch (Throwable err) {
+            throw handleFailure(err);
+        }
+    }
+
+    public Future<ConsumerGroupStatus> joinConsumerGroup(JoinConsumerGroupRequest request) {
+        CompletableFuture<ConsumerGroupStatus> future = new CompletableFuture<>();
+        final var call = asyncStub.getChannel().newCall(
+                EventServiceGrpc.getJoinConsumerGroupMethod(),
+                asyncStub.getCallOptions()
+        );
+        io.grpc.stub.ClientCalls.asyncServerStreamingCall(
+                call, request, new StreamObserverFuture<>(future));
+
+        future.whenComplete((status, err) -> {
+            if (err instanceof CancellationException cerr) {
+                call.cancel("cancelled", null);
+            }
+        });
+        return future;
+    }
+
+    public void leaveConsumerGroup(LeaveConsumerGroupRequest request) {
+        try {
+            final var empty = blockingStub.leaveConsumerGroup(request);
         } catch (Throwable err) {
             throw handleFailure(err);
         }

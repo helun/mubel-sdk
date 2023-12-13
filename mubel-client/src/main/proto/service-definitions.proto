@@ -21,4 +21,6 @@ service EventService {
   // Subscribe to scheduled events. The subscriber will receive events when they are published.
   rpc subscribeToScheduledEvents (ScheduledEventsSubscribeRequest) returns (stream TriggeredEvents) {}
   rpc cancelScheduledEvents (CancelScheduledEventsRequest) returns (google.protobuf.Empty) {}
+  rpc joinConsumerGroup (JoinConsumerGroupRequest) returns (stream ConsumerGroupStatus) {}
+  rpc leaveConsumerGroup (LeaveConsumerGroupRequest) returns (google.protobuf.Empty) {}
 }
