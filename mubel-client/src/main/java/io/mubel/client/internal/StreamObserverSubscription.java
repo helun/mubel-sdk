@@ -10,15 +10,18 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 public class StreamObserverSubscription<T> implements Subscription<T>, StreamObserver<T> {
 
     private final BlockingQueue<T> buffer;
     private final AtomicReference<Throwable> error = new AtomicReference<>();
     private final AtomicBoolean completed = new AtomicBoolean(false);
+    private final Function<T, T> eventErrorChecker;
 
-    public StreamObserverSubscription(int bufferSize) {
+    public StreamObserverSubscription(int bufferSize, Function<T, T> eventErrorChecker) {
         this.buffer = new ArrayBlockingQueue<>(bufferSize);
+        this.eventErrorChecker = eventErrorChecker;
     }
 
     @Override
@@ -46,22 +49,22 @@ public class StreamObserverSubscription<T> implements Subscription<T>, StreamObs
     public T next() throws InterruptedException {
         checkErrors();
         if (completed.get()) {
-            return null;
+            return eventErrorChecker.apply(buffer.poll());
         }
-        return buffer.take();
+        return eventErrorChecker.apply(buffer.take());
     }
 
     @Override
     public List<T> nextBatch(int size) throws InterruptedException {
         checkErrors();
         final var batch = new ArrayList<T>(size);
-        if (completed.get()) {
-            return batch;
-        }
         buffer.drainTo(batch, size);
-        if (batch.isEmpty()) {
+        if (batch.isEmpty() && !completed.get()) {
             batch.add(buffer.take());
             buffer.drainTo(batch, size - 1);
+        }
+        for (final var e : batch) {
+            eventErrorChecker.apply(e);
         }
         return batch;
     }

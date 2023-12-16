@@ -5,6 +5,7 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.protobuf.ProtoUtils;
 import io.mubel.api.grpc.*;
+import io.mubel.client.internal.EventErrorChecker;
 import io.mubel.client.internal.StreamObserverFuture;
 import io.mubel.client.internal.StreamObserverSubscription;
 
@@ -63,7 +64,10 @@ public class MubelClient {
     }
 
     public Subscription<EventData> subscribe(SubscribeRequest request, int bufferSize) {
-        final var subscription = new StreamObserverSubscription<EventData>(bufferSize);
+        final var subscription = new StreamObserverSubscription<>(
+                bufferSize,
+                EventErrorChecker.eventDataEventErrorChecker()
+        );
         asyncStub.subscribe(request, subscription);
         return subscription;
     }
@@ -96,7 +100,10 @@ public class MubelClient {
      * Subscribe to scheduled events. The subscriber will receive events when they are published.
      */
     public Subscription<TriggeredEvents> subscribeToScheduledEvents(ScheduledEventsSubscribeRequest request, int bufferSize) {
-        final var subscription = new StreamObserverSubscription<TriggeredEvents>(bufferSize);
+        final var subscription = new StreamObserverSubscription<>(
+                bufferSize,
+                EventErrorChecker.scheduledEventErrorChecker()
+        );
         asyncStub.subscribeToScheduledEvents(request, subscription);
         return subscription;
     }
