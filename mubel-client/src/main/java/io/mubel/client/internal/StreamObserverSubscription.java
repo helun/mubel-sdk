@@ -10,18 +10,18 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class StreamObserverSubscription<T> implements Subscription<T>, StreamObserver<T> {
 
     private final BlockingQueue<T> buffer;
     private final AtomicReference<Throwable> error = new AtomicReference<>();
     private final AtomicBoolean completed = new AtomicBoolean(false);
-    private final Function<T, T> eventErrorChecker;
+    private final Predicate<T> systemEventFilter;
 
-    public StreamObserverSubscription(int bufferSize, Function<T, T> eventErrorChecker) {
+    public StreamObserverSubscription(int bufferSize, Predicate<T> systemEventFilter) {
         this.buffer = new ArrayBlockingQueue<>(bufferSize);
-        this.eventErrorChecker = eventErrorChecker;
+        this.systemEventFilter = systemEventFilter;
     }
 
     @Override
@@ -48,10 +48,16 @@ public class StreamObserverSubscription<T> implements Subscription<T>, StreamObs
     @Override
     public T next() throws InterruptedException {
         checkErrors();
+        T event;
         if (completed.get()) {
-            return eventErrorChecker.apply(buffer.poll());
+            event = buffer.poll();
+        } else {
+            event = buffer.take();
         }
-        return eventErrorChecker.apply(buffer.take());
+        if (!systemEventFilter.test(event)) {
+            return next();
+        }
+        return event;
     }
 
     @Override
@@ -64,9 +70,26 @@ public class StreamObserverSubscription<T> implements Subscription<T>, StreamObs
             buffer.drainTo(batch, size - 1);
         }
         for (final var e : batch) {
-            eventErrorChecker.apply(e);
+            if (!systemEventFilter.test(e)) {
+                final var filtered = filterSystemEvents(batch);
+                if (filtered.isEmpty()) {
+                    return nextBatch(size);
+                } else {
+                    return filtered;
+                }
+            }
         }
         return batch;
+    }
+
+    private List<T> filterSystemEvents(List<T> batch) {
+        final var filtered = new ArrayList<T>(batch.size());
+        for (final var e : batch) {
+            if (systemEventFilter.test(e)) {
+                filtered.add(e);
+            }
+        }
+        return filtered;
     }
 
     private void checkErrors() {

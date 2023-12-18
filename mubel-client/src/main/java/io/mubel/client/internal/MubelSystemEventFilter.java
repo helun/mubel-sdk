@@ -8,37 +8,47 @@ import io.mubel.api.grpc.TriggeredEvents;
 import io.mubel.client.MubelClientException;
 
 import java.util.function.Function;
+import java.util.function.Predicate;
 
-public class EventErrorChecker<T> implements Function<T, T> {
+public class MubelSystemEventFilter<T> implements Predicate<T> {
 
+    private static final String MUBEL_SYSTEM_EVENT_TYPE_PREFIX = "__MBL_";
     private static final String MUBEL_PROBLEM_EVENT_TYPE = "__MBL_PROBLEM_EVENT__";
-    private static final EventErrorChecker<EventData> EVENT_DATA_EVENT_ERROR_CHECKER = new EventErrorChecker<>(EventData::getType, EventData::getData);
-    private static final EventErrorChecker<TriggeredEvents> SCHEDULED_EVENT_ERROR_CHECKER = new EventErrorChecker<>(
+    private static final MubelSystemEventFilter<EventData> EVENT_DATA_EVENT_ERROR_CHECKER = new MubelSystemEventFilter<>(EventData::getType, EventData::getData);
+    private static final MubelSystemEventFilter<TriggeredEvents> SCHEDULED_EVENT_ERROR_CHECKER = new MubelSystemEventFilter<>(
             te -> te.getEventCount() > 0 ? te.getEventList().getFirst().getType() : "",
             te -> te.getEventList().getFirst().getData()
     );
     private final Function<T, String> typeExtractor;
     private final Function<T, ByteString> dataExtractor;
 
-    public static EventErrorChecker<EventData> eventDataEventErrorChecker() {
+    public static MubelSystemEventFilter<EventData> eventDataEventErrorChecker() {
         return EVENT_DATA_EVENT_ERROR_CHECKER;
     }
 
-    public static EventErrorChecker<TriggeredEvents> scheduledEventErrorChecker() {
+    public static MubelSystemEventFilter<TriggeredEvents> scheduledEventErrorChecker() {
         return SCHEDULED_EVENT_ERROR_CHECKER;
     }
 
-    private EventErrorChecker(Function<T, String> typeExtractor, Function<T, ByteString> dataExtractor) {
+    private MubelSystemEventFilter(Function<T, String> typeExtractor, Function<T, ByteString> dataExtractor) {
         this.typeExtractor = typeExtractor;
         this.dataExtractor = dataExtractor;
     }
 
     @Override
-    public T apply(T t) {
-        if (isProblemType(typeExtractor.apply(t))) {
+    public boolean test(T t) {
+        final var type = typeExtractor.apply(t);
+        if (!isSystemEvent(type)) {
+            return true;
+        }
+        if (isProblemType(type)) {
             throw new MubelClientException(parseProblemDetail(dataExtractor.apply(t)));
         }
-        return t;
+        return false;
+    }
+
+    private boolean isSystemEvent(String type) {
+        return type.startsWith("__MBL_");
     }
 
     protected ProblemDetail parseProblemDetail(ByteString data) {
