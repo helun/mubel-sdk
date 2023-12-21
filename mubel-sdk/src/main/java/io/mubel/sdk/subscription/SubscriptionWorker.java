@@ -1,6 +1,7 @@
 package io.mubel.sdk.subscription;
 
 import io.mubel.api.grpc.EventData;
+import io.mubel.api.grpc.JoinConsumerGroupRequest;
 import io.mubel.api.grpc.SubscribeRequest;
 import io.mubel.client.MubelClient;
 import io.mubel.client.Subscription;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -44,6 +46,7 @@ public class SubscriptionWorker {
     }
 
     public <T> void start(SubscriptionConfig<T> config) throws InterruptedException {
+        waitForGroupLeadership(config);
         final var state = getSubscriptionState(config);
         final var subscription = start(config, state.sequenceNumber());
         try {
@@ -71,11 +74,32 @@ public class SubscriptionWorker {
         }
     }
 
+    private <T> void waitForGroupLeadership(SubscriptionConfig<T> config) throws InterruptedException {
+        try {
+            var joinFuture = client.joinConsumerGroup(JoinConsumerGroupRequest.newBuilder()
+                    .setConsumerGroup(config.consumerGroup())
+                    .setEsid(config.eventStoreId())
+                    .build());
+            LOG.info("Subscription worker: consumer group: {}, joining consumer group", config.consumerGroup());
+            var leaderStatus = joinFuture.get();
+            if (leaderStatus.getLeader()) {
+                LOG.info("Subscription worker: consumer group: {}, joined consumer group as leader", config.consumerGroup());
+            } else {
+                throw new IllegalStateException("Consumer group leader is not this instance");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e.getCause());
+        }
+    }
+
     private static int calculateBufferSize(SubscriptionConfig<?> params) {
         return params.batchSize() * 2;
     }
 
-    private Subscription start(SubscriptionConfig<?> params, long fromSequenceNo) {
+    private Subscription<EventData> start(SubscriptionConfig<?> params, long fromSequenceNo) {
         final var request = SubscribeRequest.newBuilder()
                 .setEsid(params.eventStoreId())
                 .setFromSequenceNo(fromSequenceNo)

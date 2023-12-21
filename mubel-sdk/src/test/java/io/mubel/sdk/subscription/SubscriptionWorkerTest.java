@@ -1,5 +1,6 @@
 package io.mubel.sdk.subscription;
 
+import io.mubel.api.grpc.ConsumerGroupStatus;
 import io.mubel.api.grpc.EventData;
 import io.mubel.api.grpc.SubscribeRequest;
 import io.mubel.client.MubelClient;
@@ -31,14 +32,14 @@ class SubscriptionWorkerTest {
 
     SubscriptionStateRepository repository = mock(SubscriptionStateRepository.class);
 
-    MubelClient factory = mock(MubelClient.class);
+    MubelClient client = mock(MubelClient.class);
 
     BlockingQueue<EventData> buffer = new ArrayBlockingQueue<>(100);
 
     TestEventConsumer<TestEvents> eventConsumer = TestComponents.testEventConsumer();
 
     SubscriptionWorker worker = SubscriptionWorker.builder()
-            .client(factory)
+            .client(client)
             .stateRepository(repository)
             .eventDataMapper(TestComponents.eventDataMapper())
             .build();
@@ -47,6 +48,13 @@ class SubscriptionWorkerTest {
 
     Future<?> workerFuture;
 
+    SubscriptionConfig.Builder<TestEvents> configBuilder = SubscriptionConfig.<TestEvents>builder()
+            .consumer(eventConsumer)
+            .eventBaseClass(TestEvents.class)
+            .eventStoreId("es:id")
+            .consumerGroup(consumerGroup)
+            .batchSize(10);
+
     static {
         Awaitility.setDefaultTimeout(Duration.ofSeconds(60));
     }
@@ -54,8 +62,8 @@ class SubscriptionWorkerTest {
     @BeforeEach
     void setup() {
         Awaitility.setDefaultTimeout(Duration.ofSeconds(1));
-        when(factory.subscribe(any(SubscribeRequest.class), anyInt()))
-                .thenReturn(new Subscription() {
+        when(client.subscribe(any(SubscribeRequest.class), anyInt()))
+                .thenReturn(new Subscription<>() {
                     @Override
                     public EventData next() throws InterruptedException {
                         return buffer.take();
@@ -85,12 +93,38 @@ class SubscriptionWorkerTest {
     @Test
     void baseCase() {
         setupWithNoPreexistingState();
+        setupGroupLeader().complete(consumerGroupStatus(true));
         startWorker();
         assertThat(eventConsumer.getEvents()).isEmpty();
         var ed = createEventData();
         send(ed);
         await().untilAsserted(() -> assertThat(eventConsumer.getEvents()).hasSize(1));
         verify(repository).put(expectedState(ed, 0));
+        verify(client).joinConsumerGroup(any());
+    }
+
+    @Test
+    void shouldWaitForGroupLeadership() {
+        setupWithNoPreexistingState();
+        var leaderFuture = setupGroupLeader();
+        startWorker();
+        await().untilAsserted(() -> verify(client).joinConsumerGroup(any()));
+        verify(client, never()).subscribe(any(), anyInt());
+        leaderFuture.complete(consumerGroupStatus(true));
+        await().untilAsserted(() -> verify(client).subscribe(any(), anyInt()));
+    }
+
+    private CompletableFuture<ConsumerGroupStatus> setupGroupLeader() {
+        var future = new CompletableFuture<ConsumerGroupStatus>();
+        when(client.joinConsumerGroup(any())).thenReturn(future);
+        return future;
+    }
+
+    private ConsumerGroupStatus consumerGroupStatus(boolean leader) {
+        return ConsumerGroupStatus.newBuilder()
+                .setGroupId(consumerGroup)
+                .setLeader(leader)
+                .build();
     }
 
     private SubscriptionState expectedState(EventData ed, int version) {
@@ -105,15 +139,12 @@ class SubscriptionWorkerTest {
         return Fixtures.eventDataBuilder().build();
     }
 
-    private void startWorker() {
-        var params = SubscriptionConfig.<TestEvents>builder()
-                .consumer(eventConsumer)
-                .eventBaseClass(TestEvents.class)
-                .consumerGroup(consumerGroup)
-                .eventStoreId(Fixtures.esid())
-                .batchSize(100)
-                .build();
 
+    private void startWorker() {
+        startWorker(configBuilder.build());
+    }
+
+    private void startWorker(SubscriptionConfig<TestEvents> params) {
         workerFuture = executorService.submit(() -> {
             try {
                 worker.start(params);
