@@ -9,6 +9,8 @@ import io.mubel.sdk.exceptions.MubelConfigurationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.CompletableFuture;
+
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -33,7 +35,7 @@ class EventStoreProvisionerTest {
 
     @BeforeEach
     void setup() {
-        when(client.provision(any())).thenReturn(PROTO_DETAILS);
+        when(client.provision(any())).thenReturn(CompletableFuture.completedFuture(PROTO_DETAILS));
     }
 
     @Test

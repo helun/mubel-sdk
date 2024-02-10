@@ -5,25 +5,28 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.protobuf.ProtoUtils;
 import io.mubel.api.grpc.*;
+import io.mubel.client.exceptions.MubelClientException;
 import io.mubel.client.internal.MubelSystemEventFilter;
 import io.mubel.client.internal.StreamObserverFuture;
 import io.mubel.client.internal.StreamObserverSubscription;
 
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class MubelClient {
 
     private final EventServiceGrpc.EventServiceBlockingStub blockingStub;
     private final EventServiceGrpc.EventServiceStub asyncStub;
 
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r);
+        thread.setName("mubel-client-background-task" + thread.getId());
+        return thread;
+    });
+
     public MubelClient(MubelClientConfig config) {
         var channel = ManagedChannelBuilder
                 .forTarget(config.address())
                 .executor(config.executor())
-                .enableFullStreamDecompression()
                 .enableRetry()
                 .keepAliveTime(5, TimeUnit.SECONDS)
                 .keepAliveTimeout(1, TimeUnit.SECONDS)
@@ -36,12 +39,53 @@ public class MubelClient {
     /**
      * Provisions a new event store. The call will fail if the event store already exists.
      */
-    public EventStoreDetails provision(ProvisionEventStoreRequest request) {
+    public CompletableFuture<EventStoreDetails> provision(ProvisionEventStoreRequest request) {
         try {
-            return blockingStub.provision(request);
+            var jobStatus = blockingStub.provision(request);
+            if (jobStatus.getState() == JobState.FAILED) {
+                return CompletableFuture.failedFuture(ExceptionHandler.mapProblem(jobStatus.getProblem()));
+            } else if (jobStatus.getState() == JobState.COMPLETED) {
+                var details = getEventStoreDetails(request.getEsid());
+                return CompletableFuture.completedFuture(details);
+            } else {
+                return awaitJobCompletion(jobStatus.getJobId())
+                        .thenApply(ignored -> getEventStoreDetails(request.getEsid()));
+
+            }
         } catch (Throwable err) {
             throw handleFailure(err);
         }
+    }
+
+    private EventStoreDetails getEventStoreDetails(String esid) {
+        var serverInfo = blockingStub.serverInfo(GetServiceInfoRequest.newBuilder().build());
+        return serverInfo.getEventStoreList()
+                .stream()
+                .filter(es -> es.getEsid().equals(esid))
+                .findFirst()
+                .orElseThrow(() -> new MubelClientException("event store %s not found".formatted(esid)));
+    }
+
+    private CompletableFuture<Void> awaitJobCompletion(String jobId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                JobStatus jobStatus = null;
+                var state = JobState.RUNNING;
+                while (state == JobState.RUNNING) {
+                    Thread.sleep(1000);
+                    jobStatus = blockingStub.jobStatus(GetJobStatusRequest.newBuilder()
+                            .setJobId(jobId)
+                            .build());
+                    state = jobStatus.getState();
+                }
+                if (state == JobState.FAILED) {
+                    throw ExceptionHandler.mapProblem(jobStatus.getProblem());
+                }
+            } catch (Throwable err) {
+                throw handleFailure(err);
+            }
+            return null;
+        }, executor);
     }
 
     /**
@@ -80,9 +124,24 @@ public class MubelClient {
         }
     }
 
-    public DropEventStoreResponse drop(DropEventStoreRequest request) {
+    public EventStoreSummary eventStoreSummary(GetEventStoreSummaryRequest request) {
         try {
-            return blockingStub.drop(request);
+            return blockingStub.eventStoreSummary(request);
+        } catch (Throwable err) {
+            throw handleFailure(err);
+        }
+    }
+
+    public CompletableFuture<Void> drop(DropEventStoreRequest request) {
+        try {
+            var jobStatus = blockingStub.drop(request);
+            if (jobStatus.getState() == JobState.FAILED) {
+                return CompletableFuture.failedFuture(ExceptionHandler.mapProblem(jobStatus.getProblem()));
+            } else if (jobStatus.getState() == JobState.COMPLETED) {
+                return CompletableFuture.completedFuture(null);
+            } else {
+                return awaitJobCompletion(jobStatus.getJobId());
+            }
         } catch (Throwable err) {
             throw handleFailure(err);
         }
@@ -136,6 +195,22 @@ public class MubelClient {
     public void leaveConsumerGroup(LeaveConsumerGroupRequest request) {
         try {
             final var empty = blockingStub.leaveConsumerGroup(request);
+        } catch (Throwable err) {
+            throw handleFailure(err);
+        }
+    }
+
+    public JobStatus copyEvents(CopyEventsRequest request) {
+        try {
+            return blockingStub.copyEvents(request);
+        } catch (Throwable err) {
+            throw handleFailure(err);
+        }
+    }
+
+    public JobStatus jobStatus(GetJobStatusRequest request) {
+        try {
+            return blockingStub.jobStatus(request);
         } catch (Throwable err) {
             throw handleFailure(err);
         }

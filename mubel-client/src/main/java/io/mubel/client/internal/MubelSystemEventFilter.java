@@ -5,7 +5,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.mubel.api.grpc.EventData;
 import io.mubel.api.grpc.ProblemDetail;
 import io.mubel.api.grpc.TriggeredEvents;
-import io.mubel.client.MubelClientException;
+import io.mubel.client.exceptions.MubelClientException;
 
 import java.util.function.Function;
 import java.util.function.Predicate;

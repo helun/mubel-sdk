@@ -1,4 +1,4 @@
-package io.mubel.client;
+package io.mubel.client.exceptions;
 
 import io.mubel.api.grpc.ProblemDetail;
 

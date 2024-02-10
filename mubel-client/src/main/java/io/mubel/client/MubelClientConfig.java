@@ -1,5 +1,7 @@
 package io.mubel.client;
 
+import io.mubel.client.exceptions.MubelClientException;
+
 import java.util.concurrent.Executor;
 
 import static java.util.Objects.requireNonNull;

@@ -2,6 +2,9 @@ package io.mubel.client;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.mubel.client.exceptions.BadRequestException;
+import io.mubel.client.exceptions.ConnectionClosedException;
+import io.mubel.client.exceptions.ServerException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
