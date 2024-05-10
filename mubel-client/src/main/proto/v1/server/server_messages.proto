@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.mubel.api.grpc.v1.server";
+option java_outer_classname = "MubelServerProto";
+package v1.server;
+
+import "v1/common/common.proto";
+
+enum DataFormat {
+  OTHER = 0;
+  PROTO = 1;
+  JSON = 2;
+}
+
+message ProvisionEventStoreRequest {
+  // The name of the event store to provision.
+  string esid = 1;
+  // The payload type of the events to store
+  DataFormat dataFormat = 2;
+  // if true, the call will block until the event store is open
+  // if false, the call will return immediately and the event store will be opened in the background
+  bool waitForOpen = 3;
+  // The name of the storage backend to use for the event store.
+  string storageBackendName = 4;
+}
+
+message DropEventStoreRequest {
+  string esid = 1;
+}
+
+message DropEventStoreResponse {
+  string esid = 1;
+}
+
+message EventStoreDetails {
+  string esid = 1;
+  string type = 2;
+  DataFormat dataFormat = 3;
+}
+
+message GetEventStoreSummaryRequest {
+  string esid = 1;
+}
+
+message EventStoreSummary {
+  string esid = 1;
+  uint64 eventCount = 2;
+  uint64 streamCount = 3;
+}
+
+enum JobState {
+  UNKNOWN = 0;
+  RUNNING = 1;
+  COMPLETED = 2;
+  FAILED = 3;
+}
+
+message GetJobStatusRequest {
+  string jobId = 1;
+}
+
+message JobStatus {
+  string jobId = 1;
+  JobState state = 2;
+  string description = 3;
+  // Problem detail if state is FAILED
+  mubel.v1.common.ProblemDetail problem = 4;
+  // progress in percent
+  uint32 progress = 5;
+  uint64 updatedAt = 6;
+  uint64 createdAt = 7;
+}
+
+message GetServiceInfoRequest {
+
+}
+
+message StorageBackendInfo {
+  string name = 1;
+  string type = 2;
+}
+
+message ServiceInfoResponse {
+  repeated StorageBackendInfo storageBackend = 1;
+  repeated EventStoreDetails eventStore = 2;
+}
+
+message CopyEventsRequest {
+  string sourceEsid = 1;
+  string targetEsid = 2;
+}

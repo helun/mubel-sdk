@@ -1,13 +1,14 @@
 package io.mubel.client;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@Disabled("server is not ready yet")
+@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 @Testcontainers
 class MubelClientTest {
 
@@ -25,7 +26,7 @@ class MubelClientTest {
     }
 
     @Test
-    void basicConnect() {
+    void Client_can_connect_and_get_server_info() {
         assertNotNull(client.getServerInfo());
     }
 }

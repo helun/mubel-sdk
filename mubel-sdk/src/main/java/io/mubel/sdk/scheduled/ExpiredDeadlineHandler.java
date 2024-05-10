@@ -5,7 +5,6 @@ import io.mubel.api.grpc.TriggeredEvents;
 import io.mubel.client.MubelClient;
 import io.mubel.sdk.EventDataMapper;
 import io.mubel.sdk.exceptions.MubelConfigurationException;
-import io.mubel.sdk.internal.Constants;
 import io.mubel.sdk.internal.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,6 @@ public class ExpiredDeadlineHandler {
         executor.execute(() -> {
             LOG.info("Expired deadline handler starting");
             final var subscription = client.subscribeToScheduledEvents(ScheduledEventsSubscribeRequest.newBuilder()
-                            .addCategory(Constants.DEADLINE_CATEGORY_NAME)
                             .build(),
                     100
             );

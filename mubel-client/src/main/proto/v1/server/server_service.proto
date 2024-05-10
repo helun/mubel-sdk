@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.mubel.api.grpc.v1.server";
+
+import "v1/server/server_messages.proto";
+
+package v1.server;
+
+service MubelServer {
+  rpc provision (ProvisionEventStoreRequest) returns (JobStatus) {}
+  rpc drop (DropEventStoreRequest) returns (JobStatus) {}
+  rpc serverInfo (GetServiceInfoRequest) returns (ServiceInfoResponse) {}
+  rpc eventStoreSummary (GetEventStoreSummaryRequest) returns (EventStoreSummary) {}
+  rpc copyEvents (CopyEventsRequest) returns (JobStatus) {}
+  rpc jobStatus (GetJobStatusRequest) returns (JobStatus) {}
+}

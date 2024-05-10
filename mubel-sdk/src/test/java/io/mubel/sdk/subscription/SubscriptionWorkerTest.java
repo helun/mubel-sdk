@@ -4,37 +4,36 @@ import io.mubel.api.grpc.ConsumerGroupStatus;
 import io.mubel.api.grpc.EventData;
 import io.mubel.api.grpc.SubscribeRequest;
 import io.mubel.client.MubelClient;
-import io.mubel.client.Subscription;
 import io.mubel.sdk.TestComponents;
 import io.mubel.sdk.fixtures.Fixtures;
 import io.mubel.sdk.fixtures.TestEvents;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 class SubscriptionWorkerTest {
+
+    static final Logger LOG = LoggerFactory.getLogger(SubscriptionWorkerTest.class);
 
     final String consumerGroup = "consumerGroup";
 
     SubscriptionStateRepository repository = mock(SubscriptionStateRepository.class);
 
     MubelClient client = mock(MubelClient.class);
-
-    BlockingQueue<EventData> buffer = new ArrayBlockingQueue<>(100);
 
     TestEventConsumer<TestEvents> eventConsumer = TestComponents.testEventConsumer();
 
@@ -47,6 +46,9 @@ class SubscriptionWorkerTest {
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     Future<?> workerFuture;
+
+    FluxSink<EventData> subscriptionSink;
+    CountDownLatch latch = new CountDownLatch(1);
 
     SubscriptionConfig.Builder<TestEvents> configBuilder = SubscriptionConfig.<TestEvents>builder()
             .consumer(eventConsumer)
@@ -61,37 +63,26 @@ class SubscriptionWorkerTest {
 
     @BeforeEach
     void setup() {
+        LOG.info("setup");
         Awaitility.setDefaultTimeout(Duration.ofSeconds(1));
+        Flux<EventData> subscription = Flux.push(sink -> {
+            subscriptionSink = requireNonNull(sink);
+            latch.countDown();
+        });
         when(client.subscribe(any(SubscribeRequest.class), anyInt()))
-                .thenReturn(new Subscription<>() {
-                    @Override
-                    public EventData next() throws InterruptedException {
-                        return buffer.take();
-                    }
-
-                    @Override
-                    public List<EventData> nextBatch(int size) throws InterruptedException {
-                        final var batch = new ArrayList<EventData>(size);
-                        buffer.drainTo(batch, size);
-                        if (batch.isEmpty()) {
-                            batch.add(buffer.take());
-                            buffer.drainTo(batch, size - 1);
-                        }
-                        return batch;
-                    }
-                });
+                .thenReturn(subscription);
     }
 
     @AfterEach
     void teardown() {
+        LOG.info("tearDown");
         worker.stop();
         executorService.shutdownNow();
-        assertThatThrownBy(() -> workerFuture.get(1, TimeUnit.SECONDS))
-                .hasRootCauseInstanceOf(InterruptedException.class);
     }
 
     @Test
-    void baseCase() {
+    void Subscribe_base_case() {
+        LOG.info("Subscribe_base_case");
         setupWithNoPreexistingState();
         setupGroupLeader().complete(consumerGroupStatus(true));
         startWorker();
@@ -104,7 +95,7 @@ class SubscriptionWorkerTest {
     }
 
     @Test
-    void shouldWaitForGroupLeadership() {
+    void Waits_for_group_leadership_before_subscribing() {
         setupWithNoPreexistingState();
         var leaderFuture = setupGroupLeader();
         startWorker();
@@ -132,7 +123,15 @@ class SubscriptionWorkerTest {
     }
 
     private void send(EventData... eventData) {
-        Collections.addAll(buffer, eventData);
+        LOG.info("send sink {}", subscriptionSink);
+        try {
+            latch.await();
+            for (var ed : eventData) {
+                subscriptionSink.next(ed);
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private EventData createEventData() {

@@ -1,7 +1,6 @@
 package io.mubel.sdk.eventstore;
 
 
-import io.mubel.api.grpc.AppendRequest;
 import io.mubel.api.grpc.EventData;
 import io.mubel.api.grpc.EventDataInput;
 import io.mubel.api.grpc.GetEventsRequest;
@@ -49,7 +48,7 @@ public class DefaultEventStore implements EventStore {
 
     @Override
     public List<EventData> get(String streamId) {
-        var response = client.get(
+        var response = client.getEvents(
                 GetEventsRequest.newBuilder()
                         .setEsid(eventStoreId)
                         .setStreamId(streamId)
@@ -60,7 +59,7 @@ public class DefaultEventStore implements EventStore {
 
     @Override
     public List<EventData> get(String streamId, int version) {
-        var response = client.get(
+        var response = client.getEvents(
                 GetEventsRequest.newBuilder()
                         .setEsid(eventStoreId)
                         .setStreamId(streamId)

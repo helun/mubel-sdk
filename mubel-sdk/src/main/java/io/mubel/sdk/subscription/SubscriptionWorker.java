@@ -4,7 +4,6 @@ import io.mubel.api.grpc.EventData;
 import io.mubel.api.grpc.JoinConsumerGroupRequest;
 import io.mubel.api.grpc.SubscribeRequest;
 import io.mubel.client.MubelClient;
-import io.mubel.client.Subscription;
 import io.mubel.sdk.EventDataMapper;
 import io.mubel.sdk.EventMessage;
 import io.mubel.sdk.EventMessageBatch;
@@ -13,7 +12,10 @@ import io.mubel.sdk.internal.Utils;
 import io.mubel.sdk.tx.TransactionAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +34,7 @@ public class SubscriptionWorker {
     private final EventDataMapper mapper;
 
     private final AtomicBoolean shouldRun = new AtomicBoolean(true);
+    private Disposable subDisposable;
 
     public static Builder builder() {
         return new Builder();
@@ -48,30 +51,20 @@ public class SubscriptionWorker {
     public <T> void start(SubscriptionConfig<T> config) throws InterruptedException {
         waitForGroupLeadership(config);
         final var state = getSubscriptionState(config);
-        final var subscription = start(config, state.sequenceNumber());
-        try {
-            LOG.info("Subscription worker: consumer group: {}, started from sequence number: {}", config.consumerGroup(), state.sequenceNumber());
-            final var stateRef = new AtomicReference<>(state);
-            final var consumer = config.consumer();
-            while (shouldRun.get()) {
-                final var batch = subscription.nextBatch(config.batchSize());
-                if (batch.isEmpty()) {
-                    break;
-                }
-                final var mappedMessages = map(config, batch);
-                transactionAdapter.execute(() -> {
-                    consumer.accept(mappedMessages);
-                    updateSubscriptionState(stateRef, mappedMessages);
+        final var stateRef = new AtomicReference<>(state);
+        final var consumer = config.consumer();
+        this.subDisposable = start(config, state.sequenceNumber())
+                .bufferTimeout(config.batchSize(), Duration.ofMillis(250))
+                .doOnSubscribe(sub -> LOG.info("Subscription worker: consumer group: {}, started from sequence number: {}", config.consumerGroup(), state.sequenceNumber()))
+                .doOnError(e -> LOG.error("Subscription worker: consumer group: {}, error", config.consumerGroup(), e))
+                .subscribe(batch -> {
+                    LOG.debug("Subscription worker: consumer group: {}, received batch of {} events", config.consumerGroup(), batch.size());
+                    final var mappedMessages = map(config, batch);
+                    transactionAdapter.execute(() -> {
+                        consumer.accept(mappedMessages);
+                        updateSubscriptionState(stateRef, mappedMessages);
+                    });
                 });
-            }
-            LOG.debug("Subscription worker: consumer group: {}, stopped", config.consumerGroup());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw e;
-        } catch (Exception e) {
-            LOG.error("Subscription worker: consumer group: {}, failed", config.consumerGroup(), e);
-            throw e;
-        }
     }
 
     private <T> void waitForGroupLeadership(SubscriptionConfig<T> config) throws InterruptedException {
@@ -99,7 +92,7 @@ public class SubscriptionWorker {
         return params.batchSize() * 2;
     }
 
-    private Subscription<EventData> start(SubscriptionConfig<?> params, long fromSequenceNo) {
+    private Flux<EventData> start(SubscriptionConfig<?> params, long fromSequenceNo) {
         final var request = SubscribeRequest.newBuilder()
                 .setEsid(params.eventStoreId())
                 .setFromSequenceNo(fromSequenceNo)
@@ -119,7 +112,9 @@ public class SubscriptionWorker {
     }
 
     public void stop() {
-        shouldRun.set(false);
+        if (subDisposable != null) {
+            subDisposable.dispose();
+        }
     }
 
     private <T> EventMessageBatch<T> map(SubscriptionConfig<T> config, List<EventData> input) {

@@ -1,6 +1,6 @@
 package io.mubel.client.exceptions;
 
-import io.mubel.api.grpc.ProblemDetail;
+import io.mubel.api.grpc.v1.common.ProblemDetail;
 
 public class MubelClientException extends RuntimeException {
 

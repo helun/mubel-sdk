@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.mubel.api.grpc.v1.events";
+
+import "v1/events/events_messages.proto";
+import "google/protobuf/empty.proto";
+
+package mubel.v1.events;
+
+service MubelEventsService {
+  rpc execute(ExecuteRequest) returns (google.protobuf.Empty);
+  rpc getEvents(GetEventsRequest) returns (GetEventsResponse);
+  rpc getEventStream(GetEventsRequest) returns (stream EventData);
+  rpc subscribe (SubscribeRequest) returns (stream EventData) {}
+  rpc subcribeToDeadlines(DeadlineSubscribeRequest) returns (stream Deadline) {}
+  rpc joinConsumerGroup (JoinConsumerGroupRequest) returns (stream ConsumerGroupStatus) {}
+  rpc leaveConsumerGroup (LeaveConsumerGroupRequest) returns (google.protobuf.Empty) {}
+}

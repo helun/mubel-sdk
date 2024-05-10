@@ -1,0 +1,170 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.mubel.api.grpc.v1.events";
+
+package mubel.v1.events;
+
+message MetaData {
+  map<string, string> data = 1;
+}
+/*
+An "event" is a data record expressing an occurrence and its context.
+ */
+message EventDataInput {
+  string id = 1; // Id of the event
+  string streamId = 2; // The id of the event stream / entity
+  uint32 revision = 3; // revision of the event in the event stream
+  string type = 5; // Type of event
+  optional MetaData metaData = 6; // Meta data for the event
+  optional bytes data = 7; // event data
+}
+
+/*
+An "event" is a data record expressing an occurrence and its context.
+Events will contain two types of information: the Event Data representing the Occurrence and Context metadata providing contextual information about the Occurrence.
+ */
+message EventData {
+  string id = 1; // Id of the event
+  string streamId = 2; // The id of the event stream / entity
+  uint32 revision = 3; // version of the event in the event stream
+  string type = 4; // Type of event
+  int64 createdAt = 5; // Timestamp when the event was created
+  int64 sequenceNo = 6; // The unique sequence number for this event
+  optional MetaData metaData = 7; // Meta data for the event
+  optional bytes data = 8; // event data
+}
+
+message AppendOperation {
+  repeated EventDataInput event = 1;
+}
+
+/**
+ Schedule an event to be published at a specific time.
+ At publish time, the event will be appended to the event stream.
+ Scheduled events can be cancelled before they are published.
+ */
+message ScheduleEventOperation {
+  EventDataInput event = 1;
+  // The time in milliseconds since the epoch (UTC) when the event should be published
+  uint64 publishTime = 2;
+}
+
+message EntityReference {
+  string id = 1;
+  string type = 2;
+}
+
+/*
+A deadline can be thought if as a scheduled command that will be executed at a specific time.
+Deadlines can be cancelled before they are published.
+ */
+message Deadline {
+  string type = 1;
+  // The target entity for the deadline
+  EntityReference targetEntity = 2;
+  optional bytes data = 3;
+  optional MetaData metaData = 4;
+}
+
+message ScheduleDeadlineOperation {
+  // Id of the event
+  string id = 1;
+  Deadline deadline = 2;
+  // The time in milliseconds since the epoch (UTC) when the deadline should be triggered
+  uint64 publishTime = 3;
+}
+
+/*
+Cancel scheduled events and deadlines
+ */
+message CancelScheduledOperation {
+  // Ids of the events to cancel
+  repeated string eventId = 1;
+}
+
+message Operation {
+  oneof operation {
+    AppendOperation append = 1;
+    ScheduleEventOperation scheduleEvent = 2;
+    ScheduleDeadlineOperation scheduleDeadline = 3;
+    CancelScheduledOperation cancel = 4;
+  }
+}
+
+message ExecuteRequest {
+  string esid = 1;
+  repeated Operation operation = 2;
+  // Optional request id, if specified a request with the same id will be ignored.
+  optional string requestId = 3;
+}
+
+message StreamSelector {
+  string streamId = 1;
+  optional uint32 fromRevision = 2;
+  optional uint32 toRevision = 3;
+}
+
+message AllSelector {
+  // return events created after the sequence no
+  int64 fromSequenceNo = 1;
+}
+
+message EventSelector {
+  oneof by {
+    StreamSelector stream = 1;
+    AllSelector all = 2;
+  }
+}
+
+message GetEventsRequest {
+  string esid = 1;
+  EventSelector selector = 2;
+  optional uint32 size = 5;
+}
+
+message GetEventsResponse {
+  string streamId = 1;
+  uint32 size = 2;
+  repeated EventData event = 3;
+}
+
+/*
+Subscribe to events.
+All events since the fromSequenceNo will be returned.
+This is a long polling request, if no events are available the request will block until an event is available or the request times out.
+ */
+message SubscribeRequest {
+  string esid = 1;
+  EventSelector selector = 2;
+  string consumerGroupToken = 3;
+  // timeout in seconds, max value is 20 seconds
+  uint32 timeout = 4;
+  optional uint32 maxEvents = 5;
+}
+/*
+Subscribe to deadline events. The subscriber will receive expired deadline events..
+This is a long polling request, if no events are available the request will block until an event is available or the request times out.
+ */
+message DeadlineSubscribeRequest {
+  // The name of the event store to subscribe to. REQUIRED.
+  string esid = 1;
+  // timeout in seconds, max value is 20 seconds
+  uint32 timeout = 2;
+  optional uint32 maxEvents = 3;
+}
+
+message JoinConsumerGroupRequest {
+  string esid = 1;
+  string consumerGroup = 2;
+}
+
+message LeaveConsumerGroupRequest {
+  string token = 1;
+}
+
+message ConsumerGroupStatus {
+  string groupId = 1;
+  string token = 2;
+  bool leader = 3;
+}

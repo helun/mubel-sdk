@@ -3,7 +3,7 @@ package io.mubel.client;
 import com.google.common.base.Throwables;
 import io.grpc.Status;
 import io.grpc.protobuf.ProtoUtils;
-import io.mubel.api.grpc.ProblemDetail;
+import io.mubel.api.grpc.v1.common.ProblemDetail;
 import io.mubel.client.exceptions.BadRequestException;
 import io.mubel.client.exceptions.ConnectionClosedException;
 import io.mubel.client.exceptions.MubelClientException;
