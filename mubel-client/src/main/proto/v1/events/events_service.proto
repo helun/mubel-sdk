@@ -14,6 +14,4 @@ service MubelEventsService {
   rpc getEventStream(GetEventsRequest) returns (stream EventData);
   rpc subscribe (SubscribeRequest) returns (stream EventData) {}
   rpc subcribeToDeadlines(DeadlineSubscribeRequest) returns (stream Deadline) {}
-  rpc joinConsumerGroup (JoinConsumerGroupRequest) returns (stream ConsumerGroupStatus) {}
-  rpc leaveConsumerGroup (LeaveConsumerGroupRequest) returns (google.protobuf.Empty) {}
 }

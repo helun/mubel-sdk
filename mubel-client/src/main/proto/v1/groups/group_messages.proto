@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.mubel.api.grpc.v1.groups";
+
+package mubel.v1.groups;
+
+message GroupMessage {
+  oneof payload {
+    JoinGroupRequest joinGroupRequest = 1;
+    LeaveGroupRequest leaveGroupRequest = 2;
+    Heartbeat heartbeat = 3;
+  }
+}
+
+message JoinGroupRequest {
+  string esid = 1;
+  string groupId = 2;
+}
+
+message LeaveGroupRequest {
+  string groupId = 1;
+  string token = 2;
+}
+
+message GroupStatus {
+  string groupId = 1;
+  string token = 2;
+  bool leader = 3;
+  uint32 hearbeatIntervalSeconds = 4;
+}
+
+message Heartbeat {
+  string groupId = 1;
+  string token = 2;
+}

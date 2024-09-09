@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.mubel.api.grpc.v1.groups";
+
+import "v1/groups/group_messages.proto";
+import "google/protobuf/empty.proto";
+
+package mubel.v1.groups;
+
+service GroupsService {
+  /**
+    Join a consumer group. The result is a stream of group status updates.
+    If the client becomes leader, the stream will be completed.
+
+    If the client is not the leader, the stream will continue until the client leaves the group or becomes the leader.
+   */
+  rpc join (JoinGroupRequest) returns (stream GroupStatus) {}
+  rpc leaveConsumerGroup (LeaveGroupRequest) returns (google.protobuf.Empty) {}
+  rpc heartbeat(Heartbeat) returns (google.protobuf.Empty) {}
+}

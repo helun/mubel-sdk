@@ -6,19 +6,24 @@ import io.grpc.Status;
 import io.grpc.protobuf.ProtoUtils;
 import io.mubel.api.grpc.v1.common.ProblemDetail;
 import io.mubel.api.grpc.v1.events.*;
+import io.mubel.api.grpc.v1.groups.*;
 import io.mubel.api.grpc.v1.server.*;
 import io.mubel.client.exceptions.MubelClientException;
 import io.mubel.client.internal.StreamObserverFluxAdapter;
-import io.mubel.client.internal.StreamObserverFuture;
 import reactor.core.publisher.Flux;
 
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class MubelClient {
 
     private final MubelEventsServiceGrpc.MubelEventsServiceBlockingStub blockingEventsServiceStub;
     private final MubelEventsServiceGrpc.MubelEventsServiceStub asyncEventsServiceStub;
     private final MubelServerGrpc.MubelServerBlockingStub blockingServerStub;
+    private final GroupsServiceGrpc.GroupsServiceStub asyncGroupsServiceStub;
+    private final GroupsServiceGrpc.GroupsServiceBlockingStub blockingGroupsServiceStub;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread thread = new Thread(r);
@@ -38,6 +43,8 @@ public class MubelClient {
         blockingEventsServiceStub = MubelEventsServiceGrpc.newBlockingStub(channel);
         asyncEventsServiceStub = MubelEventsServiceGrpc.newStub(channel);
         blockingServerStub = MubelServerGrpc.newBlockingStub(channel);
+        asyncGroupsServiceStub = GroupsServiceGrpc.newStub(channel);
+        blockingGroupsServiceStub = GroupsServiceGrpc.newBlockingStub(channel);
     }
 
     /**
@@ -111,7 +118,13 @@ public class MubelClient {
         }
     }
 
-    public Flux<EventData> subscribe(SubscribeRequest request, int bufferSize) {
+    public Flux<EventData> getEventStream(GetEventsRequest request) {
+        final StreamObserverFluxAdapter<EventData> adapter = new StreamObserverFluxAdapter<>();
+        asyncEventsServiceStub.getEventStream(request, adapter);
+        return adapter.toFlux();
+    }
+
+    public Flux<EventData> subscribe(SubscribeRequest request) {
         final StreamObserverFluxAdapter<EventData> adapter = new StreamObserverFluxAdapter<>();
         asyncEventsServiceStub.subscribe(request, adapter);
         return adapter.toFlux();
@@ -157,26 +170,23 @@ public class MubelClient {
         return adapter.toFlux();
     }
 
-    public Future<ConsumerGroupStatus> joinConsumerGroup(JoinConsumerGroupRequest request) {
-        CompletableFuture<ConsumerGroupStatus> future = new CompletableFuture<>();
-        final var call = asyncEventsServiceStub.getChannel().newCall(
-                MubelEventsServiceGrpc.getJoinConsumerGroupMethod(),
-                asyncEventsServiceStub.getCallOptions()
-        );
-        io.grpc.stub.ClientCalls.asyncServerStreamingCall(
-                call, request, new StreamObserverFuture<>(future));
-
-        future.whenComplete((status, err) -> {
-            if (err instanceof CancellationException cerr) {
-                call.cancel("cancelled", null);
-            }
-        });
-        return future;
+    public Flux<GroupStatus> joinConsumerGroup(JoinGroupRequest request) {
+        var adapter = new StreamObserverFluxAdapter<GroupStatus>();
+        asyncGroupsServiceStub.join(request, adapter);
+        return adapter.toFlux();
     }
 
-    public void leaveConsumerGroup(LeaveConsumerGroupRequest request) {
+    public void leaveConsumerGroup(LeaveGroupRequest request) {
         try {
-            final var empty = blockingEventsServiceStub.leaveConsumerGroup(request);
+            var ignored = blockingGroupsServiceStub.leaveConsumerGroup(request);
+        } catch (Throwable err) {
+            throw handleFailure(err);
+        }
+    }
+
+    public void heartbeat(Heartbeat heartbeat) {
+        try {
+            var ignored = blockingGroupsServiceStub.heartbeat(heartbeat);
         } catch (Throwable err) {
             throw handleFailure(err);
         }

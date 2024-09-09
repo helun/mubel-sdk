@@ -56,7 +56,7 @@ message EntityReference {
 }
 
 /*
-A deadline can be thought if as a scheduled command that will be executed at a specific time.
+A deadline can be thought of as a scheduled command that will be executed at a specific time.
 Deadlines can be cancelled before they are published.
  */
 message Deadline {
@@ -137,7 +137,7 @@ This is a long polling request, if no events are available the request will bloc
 message SubscribeRequest {
   string esid = 1;
   EventSelector selector = 2;
-  string consumerGroupToken = 3;
+  optional string consumerGroupToken = 3;
   // timeout in seconds, max value is 20 seconds
   uint32 timeout = 4;
   optional uint32 maxEvents = 5;
@@ -152,19 +152,4 @@ message DeadlineSubscribeRequest {
   // timeout in seconds, max value is 20 seconds
   uint32 timeout = 2;
   optional uint32 maxEvents = 3;
-}
-
-message JoinConsumerGroupRequest {
-  string esid = 1;
-  string consumerGroup = 2;
-}
-
-message LeaveConsumerGroupRequest {
-  string token = 1;
-}
-
-message ConsumerGroupStatus {
-  string groupId = 1;
-  string token = 2;
-  bool leader = 3;
 }
