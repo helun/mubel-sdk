@@ -27,7 +27,7 @@ public class MubelClient {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread thread = new Thread(r);
-        thread.setName("mubel-client-background-task" + thread.getId());
+        thread.setName("mubel-client-background-task" + thread.threadId());
         return thread;
     });
 
@@ -164,7 +164,7 @@ public class MubelClient {
     /**
      * Subscribe to scheduled events. The subscriber will receive events when they are published.
      */
-    public Flux<Deadline> subscribeToScheduledEvents(DeadlineSubscribeRequest request, int bufferSize) {
+    public Flux<Deadline> subscribeToDeadlines(DeadlineSubscribeRequest request) {
         var adapter = new StreamObserverFluxAdapter<Deadline>();
         asyncEventsServiceStub.subcribeToDeadlines(request, adapter);
         return adapter.toFlux();

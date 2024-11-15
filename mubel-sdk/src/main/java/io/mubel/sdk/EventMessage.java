@@ -1,7 +1,7 @@
 package io.mubel.sdk;
 
 import com.google.common.base.Objects;
-import io.mubel.api.grpc.EventData;
+import io.mubel.api.grpc.v1.events.EventData;
 
 import java.time.Instant;
 
@@ -63,7 +63,7 @@ public class EventMessage<T> {
      * @return the version of this event for this stream id
      */
     public int version() {
-        return eventData.getVersion();
+        return eventData.getRevision();
     }
 
     /**

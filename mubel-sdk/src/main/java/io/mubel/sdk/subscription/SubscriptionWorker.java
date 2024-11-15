@@ -1,8 +1,11 @@
 package io.mubel.sdk.subscription;
 
-import io.mubel.api.grpc.EventData;
-import io.mubel.api.grpc.JoinConsumerGroupRequest;
-import io.mubel.api.grpc.SubscribeRequest;
+import io.mubel.api.grpc.v1.events.AllSelector;
+import io.mubel.api.grpc.v1.events.EventData;
+import io.mubel.api.grpc.v1.events.EventSelector;
+import io.mubel.api.grpc.v1.events.SubscribeRequest;
+import io.mubel.api.grpc.v1.groups.GroupStatus;
+import io.mubel.api.grpc.v1.groups.JoinGroupRequest;
 import io.mubel.client.MubelClient;
 import io.mubel.sdk.EventDataMapper;
 import io.mubel.sdk.EventMessage;
@@ -19,7 +22,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -67,24 +69,19 @@ public class SubscriptionWorker {
                 });
     }
 
-    private <T> void waitForGroupLeadership(SubscriptionConfig<T> config) throws InterruptedException {
-        try {
-            var joinFuture = client.joinConsumerGroup(JoinConsumerGroupRequest.newBuilder()
-                    .setConsumerGroup(config.consumerGroup())
-                    .setEsid(config.eventStoreId())
-                    .build());
-            LOG.info("Subscription worker: consumer group: {}, joining consumer group", config.consumerGroup());
-            var leaderStatus = joinFuture.get();
-            if (leaderStatus.getLeader()) {
-                LOG.info("Subscription worker: consumer group: {}, joined consumer group as leader", config.consumerGroup());
-            } else {
-                throw new IllegalStateException("Consumer group leader is not this instance");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw e;
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e.getCause());
+    private <T> void waitForGroupLeadership(SubscriptionConfig<T> config) {
+        var leaderStatus = client.joinConsumerGroup(JoinGroupRequest.newBuilder()
+                        .setGroupId(config.consumerGroup())
+                        .setEsid(config.eventStoreId())
+                        .build())
+                .doOnSubscribe(sub -> LOG.info("Subscription worker: consumer group: {}, joining consumer group", config.consumerGroup()))
+                .filter(GroupStatus::getLeader)
+                .blockFirst();
+        if (leaderStatus != null) {
+            LOG.info("Subscription worker: consumer group: {}, joined consumer group as leader", config.consumerGroup());
+        } else {
+            LOG.debug("join flux ended without becoming leader, retrying");
+            waitForGroupLeadership(config);
         }
     }
 
@@ -93,11 +90,14 @@ public class SubscriptionWorker {
     }
 
     private Flux<EventData> start(SubscriptionConfig<?> params, long fromSequenceNo) {
-        final var request = SubscribeRequest.newBuilder()
+        var request = SubscribeRequest.newBuilder()
                 .setEsid(params.eventStoreId())
-                .setFromSequenceNo(fromSequenceNo)
+                .setSelector(EventSelector.newBuilder()
+                        .setAll(AllSelector.newBuilder()
+                                .setFromSequenceNo(fromSequenceNo)
+                                .build()))
                 .build();
-        return client.subscribe(request, calculateBufferSize(params));
+        return client.subscribe(request);
     }
 
     private <T> SubscriptionState getSubscriptionState(SubscriptionConfig<T> config) {

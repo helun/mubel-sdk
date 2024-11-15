@@ -20,7 +20,7 @@ public class InvocationContext {
         return streamId;
     }
 
-    public void applyVersion(int version) {
+    public void applyRevision(int version) {
         currentVersion.applyVersion(version);
     }
 

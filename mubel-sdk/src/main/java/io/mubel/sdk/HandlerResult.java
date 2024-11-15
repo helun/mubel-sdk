@@ -1,10 +1,8 @@
 package io.mubel.sdk;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.Objects.requireNonNullElse;
@@ -46,6 +44,30 @@ public record HandlerResult<T>(
 
     public static <T> HandlerResult.Builder<T> builder() {
         return new Builder<>();
+    }
+
+    public void events(Consumer<List<T>> consumer) {
+        if (!events.isEmpty()) {
+            consumer.accept(events);
+        }
+    }
+
+    public void deadlines(Consumer<List<Deadline>> consumer) {
+        if (!deadlines.isEmpty()) {
+            consumer.accept(deadlines);
+        }
+    }
+
+    public void scheduledEvents(Consumer<List<ScheduledEvent<T>>> consumer) {
+        if (!scheduledEvents.isEmpty()) {
+            consumer.accept(scheduledEvents);
+        }
+    }
+
+    public void cancelIds(Consumer<Collection<String>> consumer) {
+        if (!cancelIds.isEmpty()) {
+            consumer.accept(cancelIds);
+        }
     }
 
     /**

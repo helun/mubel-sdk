@@ -1,9 +1,9 @@
 package io.mubel.sdk.eventstore;
 
-import io.mubel.api.grpc.EventStoreDetails;
-import io.mubel.api.grpc.ProvisionEventStoreRequest;
-import io.mubel.api.grpc.ServiceInfoResponse;
-import io.mubel.api.grpc.StorageBackendInfo;
+import io.mubel.api.grpc.v1.server.EventStoreDetails;
+import io.mubel.api.grpc.v1.server.ProvisionEventStoreRequest;
+import io.mubel.api.grpc.v1.server.ServiceInfoResponse;
+import io.mubel.api.grpc.v1.server.StorageBackendInfo;
 import io.mubel.client.MubelClient;
 import io.mubel.sdk.Constrains;
 import io.mubel.sdk.exceptions.MubelConfigurationException;
@@ -83,11 +83,11 @@ public class EventStoreProvisioner {
                 .collect(Collectors.toMap(EventStoreDetails::getEsid, Function.identity()));
     }
 
-    private static io.mubel.api.grpc.DataFormat mapDataFormat(DataFormat dataFormat) {
+    private static io.mubel.api.grpc.v1.server.DataFormat mapDataFormat(DataFormat dataFormat) {
         return switch (dataFormat) {
-            case JSON -> io.mubel.api.grpc.DataFormat.JSON;
-            case PROTOBUF -> io.mubel.api.grpc.DataFormat.PROTO;
-            case OTHER -> io.mubel.api.grpc.DataFormat.OTHER;
+            case JSON -> io.mubel.api.grpc.v1.server.DataFormat.JSON;
+            case PROTOBUF -> io.mubel.api.grpc.v1.server.DataFormat.PROTO;
+            case OTHER -> io.mubel.api.grpc.v1.server.DataFormat.OTHER;
         };
     }
 

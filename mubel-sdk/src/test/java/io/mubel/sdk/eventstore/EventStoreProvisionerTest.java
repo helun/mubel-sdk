@@ -1,9 +1,9 @@
 package io.mubel.sdk.eventstore;
 
-import io.mubel.api.grpc.DataFormat;
-import io.mubel.api.grpc.EventStoreDetails;
-import io.mubel.api.grpc.ServiceInfoResponse;
-import io.mubel.api.grpc.StorageBackendInfo;
+import io.mubel.api.grpc.v1.server.DataFormat;
+import io.mubel.api.grpc.v1.server.EventStoreDetails;
+import io.mubel.api.grpc.v1.server.ServiceInfoResponse;
+import io.mubel.api.grpc.v1.server.StorageBackendInfo;
 import io.mubel.client.MubelClient;
 import io.mubel.sdk.exceptions.MubelConfigurationException;
 import org.junit.jupiter.api.BeforeEach;

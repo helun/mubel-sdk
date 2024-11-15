@@ -1,8 +1,8 @@
 package io.mubel.sdk.subscription;
 
-import io.mubel.api.grpc.ConsumerGroupStatus;
-import io.mubel.api.grpc.EventData;
-import io.mubel.api.grpc.SubscribeRequest;
+import io.mubel.api.grpc.v1.events.EventData;
+import io.mubel.api.grpc.v1.events.SubscribeRequest;
+import io.mubel.api.grpc.v1.groups.GroupStatus;
 import io.mubel.client.MubelClient;
 import io.mubel.sdk.TestComponents;
 import io.mubel.sdk.fixtures.Fixtures;
@@ -13,10 +13,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Sinks;
 
 import java.time.Duration;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -69,7 +73,7 @@ class SubscriptionWorkerTest {
             subscriptionSink = requireNonNull(sink);
             latch.countDown();
         });
-        when(client.subscribe(any(SubscribeRequest.class), anyInt()))
+        when(client.subscribe(any(SubscribeRequest.class)))
                 .thenReturn(subscription);
     }
 
@@ -84,7 +88,7 @@ class SubscriptionWorkerTest {
     void Subscribe_base_case() {
         LOG.info("Subscribe_base_case");
         setupWithNoPreexistingState();
-        setupGroupLeader().complete(consumerGroupStatus(true));
+        setupGroupLeader().tryEmitNext(consumerGroupStatus(true));
         startWorker();
         assertThat(eventConsumer.getEvents()).isEmpty();
         var ed = createEventData();
@@ -97,22 +101,25 @@ class SubscriptionWorkerTest {
     @Test
     void Waits_for_group_leadership_before_subscribing() {
         setupWithNoPreexistingState();
-        var leaderFuture = setupGroupLeader();
+        var leaderSink = setupGroupLeader();
         startWorker();
         await().untilAsserted(() -> verify(client).joinConsumerGroup(any()));
-        verify(client, never()).subscribe(any(), anyInt());
-        leaderFuture.complete(consumerGroupStatus(true));
-        await().untilAsserted(() -> verify(client).subscribe(any(), anyInt()));
+        verify(client, never()).subscribe(any());
+        leaderSink.tryEmitNext(consumerGroupStatus(true));
+        await().untilAsserted(() -> verify(client).subscribe(any()));
     }
 
-    private CompletableFuture<ConsumerGroupStatus> setupGroupLeader() {
-        var future = new CompletableFuture<ConsumerGroupStatus>();
-        when(client.joinConsumerGroup(any())).thenReturn(future);
-        return future;
+    private Sinks.Many<GroupStatus> setupGroupLeader() {
+        Sinks.Many<GroupStatus> sink = Sinks.many()
+                .unicast()
+                .onBackpressureBuffer();
+
+        when(client.joinConsumerGroup(any())).thenReturn(sink.asFlux());
+        return sink;
     }
 
-    private ConsumerGroupStatus consumerGroupStatus(boolean leader) {
-        return ConsumerGroupStatus.newBuilder()
+    private GroupStatus consumerGroupStatus(boolean leader) {
+        return GroupStatus.newBuilder()
                 .setGroupId(consumerGroup)
                 .setLeader(leader)
                 .build();

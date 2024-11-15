@@ -1,7 +1,7 @@
 package io.mubel.sdk.fixtures;
 
 import com.google.protobuf.ByteString;
-import io.mubel.api.grpc.EventData;
+import io.mubel.api.grpc.v1.events.EventData;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -19,7 +19,7 @@ public final class Fixtures {
                 .setId(uuid())
                 .setStreamId(uuid())
                 .setType(TestEvents.EventA.class.getName())
-                .setVersion(0)
+                .setRevision(0)
                 .setSequenceNo(sequenceNo++)
                 .setCreatedAt(Clock.systemUTC().millis())
                 .setData(ByteString.copyFrom("""

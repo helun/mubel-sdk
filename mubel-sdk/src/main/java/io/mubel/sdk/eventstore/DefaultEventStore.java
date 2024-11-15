@@ -1,9 +1,6 @@
 package io.mubel.sdk.eventstore;
 
-
-import io.mubel.api.grpc.EventData;
-import io.mubel.api.grpc.EventDataInput;
-import io.mubel.api.grpc.GetEventsRequest;
+import io.mubel.api.grpc.v1.events.*;
 import io.mubel.client.MubelClient;
 import io.mubel.sdk.Constrains;
 import io.mubel.sdk.exceptions.MubelConfigurationException;
@@ -26,24 +23,8 @@ public class DefaultEventStore implements EventStore {
     }
 
     @Override
-    public void append(List<EventDataInput> events) {
-        client.append(
-                AppendRequest.newBuilder()
-                        .setEsid(eventStoreId)
-                        .addAllEvent(events)
-                        .build()
-        );
-    }
-
-    @Override
-    public void append(io.mubel.sdk.eventstore.AppendRequest request) {
-        client.append(
-                AppendRequest.newBuilder()
-                        .setEsid(eventStoreId)
-                        .addAllEvent(request.events())
-                        .addAllScheduledEvent(request.scheduledEvents())
-                        .build()
-        );
+    public void append(ExecuteRequest request) {
+        client.execute(request);
     }
 
     @Override
@@ -51,18 +32,27 @@ public class DefaultEventStore implements EventStore {
         var response = client.getEvents(
                 GetEventsRequest.newBuilder()
                         .setEsid(eventStoreId)
-                        .setStreamId(streamId)
+                        .setSelector(EventSelector.newBuilder()
+                                .setStream(StreamSelector.newBuilder()
+                                        .setStreamId(streamId)
+                                        .build())
+                                .build())
                         .build()
         );
         return response.getEventList();
     }
 
     @Override
-    public List<EventData> get(String streamId, int version) {
+    public List<EventData> get(String streamId, int revision) {
         var response = client.getEvents(
                 GetEventsRequest.newBuilder()
                         .setEsid(eventStoreId)
-                        .setStreamId(streamId)
+                        .setSelector(EventSelector.newBuilder()
+                                .setStream(StreamSelector.newBuilder()
+                                        .setStreamId(streamId)
+                                        .setFromRevision(revision)
+                                        .build())
+                                .build())
                         .build()
         );
         return response.getEventList();

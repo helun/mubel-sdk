@@ -1,8 +1,11 @@
 package io.mubel.sdk.execution;
 
+import io.mubel.api.grpc.v1.events.CancelScheduledOperation;
+import io.mubel.api.grpc.v1.events.EntityReference;
+import io.mubel.api.grpc.v1.events.ExecuteRequest;
+import io.mubel.api.grpc.v1.events.Operation;
 import io.mubel.sdk.EventDataMapper;
 import io.mubel.sdk.HandlerResult;
-import io.mubel.sdk.eventstore.AppendRequest;
 import io.mubel.sdk.eventstore.EventStore;
 import io.mubel.sdk.exceptions.EventStreamNotFoundException;
 import io.mubel.sdk.execution.internal.CommandExecutor;
@@ -40,7 +43,7 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
         final var existingEvents = getExistingEvents(nnStreamId, ctx);
         final int oldVersion = ctx.currentVersion();
         final var handlerResult = commandExecutor.execute(existingEvents, nnCommand);
-        appendResult(ctx, handlerResult);
+        applyResult(ctx, handlerResult);
         final int newVersion = ctx.currentVersion();
         return new CommandResult<>(
                 streamId,
@@ -58,7 +61,7 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
         final var ctx = InvocationContext.create(nnStreamId);
         final var existingEvents = getExistingEvents(nnStreamId, ctx);
         final var handlerResult = commandExecutor.handleExpiredDeadline(existingEvents, expiredDeadline);
-        appendResult(ctx, handlerResult);
+        applyResult(ctx, handlerResult);
     }
 
     public T getState(UUID streamId) {
@@ -100,35 +103,52 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
         return Optional.of(commandExecutor.getState(existingEvents));
     }
 
-    private void appendResult(InvocationContext ctx, HandlerResult<E> result) {
+    private void applyResult(InvocationContext ctx, HandlerResult<E> result) {
         if (result.isEmpty()) {
             return;
         }
 
-        final var events = eventDataMapper.toEventDataInput(
-                ctx.streamId(),
-                result.events(),
-                ctx::nextVersion);
-        final var scheduledEvents = eventDataMapper.toScheduledEvent(
-                ctx.streamId(),
-                aggregateName,
-                result
+        var exrb = ExecuteRequest.newBuilder();
+        result.events(events -> {
+            final var appendOp = eventDataMapper.toAppendOp(
+                    ctx.streamId(),
+                    events,
+                    ctx::nextVersion);
+            exrb.addOperation(appendOp);
+        });
+
+        final var aggregateReference = EntityReference.newBuilder()
+                .setId(ctx.streamId())
+                .setType(aggregateName)
+                .build();
+
+        result.deadlines(deadlines ->
+                exrb.addAllOperation(eventDataMapper.toDeadlineOps(
+                        aggregateReference,
+                        deadlines
+                ))
         );
 
-        eventStore.append(
-                new AppendRequest(
-                        events,
-                        scheduledEvents,
-                        result.cancelIds()
-                )
+        result.scheduledEvents(scheduled ->
+                exrb.addAllOperation(eventDataMapper.toScheduledEventOps(
+                        aggregateReference,
+                        scheduled
+                )));
+
+        result.cancelIds(cancelIds -> exrb.addOperation(Operation.newBuilder().setCancel(CancelScheduledOperation.newBuilder()
+                        .addAllEventId(cancelIds)
+                        .build())
+                .build())
         );
+
+        eventStore.append(exrb.build());
     }
 
     @SuppressWarnings("unchecked")
     private List<E> getExistingEvents(String streamId, InvocationContext ctx) {
         return (List<E>) eventDataMapper.fromEventData(
                 eventStore.get(streamId),
-                ed -> ctx.applyVersion(ed.getVersion())
+                ed -> ctx.applyRevision(ed.getRevision())
         );
     }
 
@@ -136,7 +156,7 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
     private List<E> getExistingEvents(String streamId, int version, InvocationContext ctx) {
         return (List<E>) eventDataMapper.fromEventData(
                 eventStore.get(streamId, version),
-                ed -> ctx.applyVersion(ed.getVersion())
+                ed -> ctx.applyRevision(ed.getRevision())
         );
     }
 

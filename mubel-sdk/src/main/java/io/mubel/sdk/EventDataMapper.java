@@ -1,24 +1,19 @@
 package io.mubel.sdk;
 
 import com.google.protobuf.ByteString;
-import io.mubel.api.grpc.EventData;
-import io.mubel.api.grpc.EventDataInput;
-import io.mubel.api.grpc.MetaData;
-import io.mubel.api.grpc.ScheduledEvent;
+import io.mubel.api.grpc.v1.events.*;
 import io.mubel.sdk.codec.EventDataCodec;
-import io.mubel.sdk.internal.Constants;
+import io.mubel.sdk.internal.UuidUtil;
 import io.mubel.sdk.scheduled.ExpiredDeadline;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
-import static io.mubel.sdk.scheduled.ScheduleTimeCalculator.calculatePublishTime;
 import static java.util.Objects.requireNonNull;
 
 public class EventDataMapper {
@@ -55,22 +50,17 @@ public class EventDataMapper {
         return codec.decode(eventData.getData().toByteArray(), eventClass);
     }
 
-    public Object fromScheduledEvent(ScheduledEvent event) {
-        final var eventClass = eventTypeRegistry.getClassForType(event.getType());
-        return codec.decode(event.getData().toByteArray(), eventClass);
-    }
-
     @SuppressWarnings("unchecked")
-    public ExpiredDeadline mapExpiredDeadline(ScheduledEvent event, Instant timestamp) {
+    public ExpiredDeadline mapExpiredDeadline(io.mubel.api.grpc.v1.events.Deadline deadline, Instant timestamp) {
         final Map<String, String> attributes;
-        if (event.getData().isEmpty()) {
+        if (deadline.getData().isEmpty()) {
             attributes = null;
         } else {
-            attributes = codec.decode(event.getData().toByteArray(), Map.class);
+            attributes = codec.decode(deadline.getData().toByteArray(), Map.class);
         }
         return new ExpiredDeadline(
-                UUID.fromString(event.getTargetEntityId()),
-                event.getMetaData().getDataOrDefault(Constants.DEADLINE_NAME_METADATA_KEY, ""),
+                UuidUtil.parseUuid(deadline.getTargetEntity().getId()),
+                deadline.getType(),
                 attributes,
                 timestamp
         );
@@ -87,30 +77,57 @@ public class EventDataMapper {
         return events.stream().map(e -> fromEventData(e, eventDataConsumer)).toList();
     }
 
-    public List<EventDataInput> toEventDataInput(String streamId, List<?> events, Supplier<Integer> versionSupplier) {
+    public Operation toAppendOp(String streamId, List<?> events, Supplier<Integer> versionSupplier) {
         final var builder = EventDataInput.newBuilder()
                 .setStreamId(requireNonNull(streamId, "streamId may not be null"));
-        return events.stream().map(e -> toEventDataInput(builder, e, versionSupplier)).toList();
+        var ed = events.stream()
+                .map(e -> toAppendOp(builder, e, versionSupplier))
+                .toList();
+        return Operation.newBuilder()
+                .setAppend(AppendOperation.newBuilder()
+                        .addAllEvent(ed)
+                        .build())
+                .build();
     }
 
-    public List<ScheduledEvent> toScheduledEvent(String streamId, String targetType, HandlerResult<?> input) {
-        if (input.deadlines().isEmpty() && input.scheduledEvents().isEmpty()) {
+    public <T> Iterable<Operation> toScheduledEventOps(EntityReference entityReference, List<HandlerResult.ScheduledEvent<T>> input) {
+        if (input.isEmpty()) {
             return List.of();
         }
-        Stream<ScheduledEvent> result = null;
-        if (!input.deadlines().isEmpty()) {
-            result = input.deadlines().stream()
-                    .map(d -> toScheduledEvent(streamId, targetType, d));
-        }
-        if (!input.scheduledEvents().isEmpty()) {
-            final var seStream = input.scheduledEvents().stream()
-                    .map(e -> toScheduledEvent(streamId, targetType, e));
-            result = result != null ? Stream.concat(result, seStream) : seStream;
-        }
-        return result.toList();
+        var eventDataBuilder = EventDataInput.newBuilder()
+                .setStreamId(entityReference.getId());
+        var opBuilder = Operation.newBuilder();
+        return input
+                .stream()
+                .map(se -> opBuilder.setScheduleEvent(ScheduleEventOperation.newBuilder()
+                                .setEvent(toAppendOp(eventDataBuilder, se.event(), () -> -1))
+                                .setPublishTime(clock.instant().plus(se.duration()).toEpochMilli())
+                                .build())
+                        .build()
+                ).toList();
     }
 
-    private EventDataInput toEventDataInput(
+    public List<Operation> toDeadlineOps(EntityReference entityReference, List<Deadline> deadlines) {
+        if (deadlines.isEmpty()) {
+            return List.of();
+        }
+        return deadlines.stream()
+                .map(toScheduleDeadlineOp(entityReference))
+                .toList();
+    }
+
+    private Function<Deadline, Operation> toScheduleDeadlineOp(EntityReference entityReference) {
+        return dl -> Operation.newBuilder().setScheduleDeadline(ScheduleDeadlineOperation.newBuilder()
+                        .setDeadline(io.mubel.api.grpc.v1.events.Deadline.newBuilder()
+                                .setData(ByteString.copyFrom(codec.encode(dl.attributes())))
+                                .setTargetEntity(entityReference)
+                                .setType(dl.name())
+                        ).setPublishTime(clock.instant().plus(dl.duration()).toEpochMilli())
+                        .build())
+                .build();
+    }
+
+    private EventDataInput toAppendOp(
             EventDataInput.Builder builder,
             Object data,
             Supplier<Integer> versionSupplier) {
@@ -118,38 +135,8 @@ public class EventDataMapper {
                 .setType(eventTypeRegistry.getTypeNameForClass(data.getClass()))
                 .setData(ByteString.copyFrom(codec.encode(data)))
                 .setId(idGenerator.generate().toString())
-                .setVersion(versionSupplier.get())
+                .setRevision(versionSupplier.get())
                 .build();
     }
 
-    private ScheduledEvent toScheduledEvent(String streamId, String targetType, Deadline deadline) {
-        var data = ByteString.empty();
-        if (deadline.attributes() != null && !deadline.attributes().isEmpty()) {
-            data = ByteString.copyFrom(codec.encode(deadline.attributes()));
-        }
-
-        return ScheduledEvent.newBuilder()
-                .setId(deadline.id().toString())
-                .setTargetEntityId(streamId)
-                .setTargetType(targetType)
-                .setCategory(Constants.DEADLINE_CATEGORY_NAME)
-                .setDeadline(true)
-                .setPublishTime(calculatePublishTime(deadline.duration(), clock))
-                .setMetaData(MetaData.newBuilder()
-                        .putData(Constants.DEADLINE_NAME_METADATA_KEY, deadline.name())
-                        .build())
-                .setData(data)
-                .build();
-    }
-
-    private ScheduledEvent toScheduledEvent(String streamId, String targetType, HandlerResult.ScheduledEvent<?> event) {
-        return ScheduledEvent.newBuilder()
-                .setStreamId(streamId)
-                .setTargetType(targetType)
-                .setCategory(Constants.SCHEDULED_CATEGORY_NAME)
-                .setPublishTime(calculatePublishTime(event.duration(), clock))
-                .setData(ByteString.copyFrom(codec.encode(event.event())))
-                .setType(eventTypeRegistry.getTypeNameForClass(event.event().getClass()))
-                .build();
-    }
 }
