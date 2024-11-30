@@ -17,7 +17,8 @@ import static org.mockito.Mockito.*;
 
 class EventStoreProvisionerTest {
 
-    static String ESID = "backend:event_store_name";
+    static String ESID = "event_store_name";
+    static String BACKEND = "backend";
 
     static EventStoreDetails PROTO_DETAILS = EventStoreDetails.newBuilder()
             .setEsid(ESID)
@@ -41,7 +42,7 @@ class EventStoreProvisionerTest {
     @Test
     void provisionExistingWithSameParams() {
         EventStoreProvisioner eventStoreProvisioner = EventStoreProvisioner.builder()
-                .eventStore(ESID, EventStoreProvisioner.DataFormat.PROTOBUF)
+                .eventStore(ESID, EventStoreProvisioner.DataFormat.PROTOBUF, BACKEND)
                 .client(client)
                 .build();
 
@@ -55,7 +56,7 @@ class EventStoreProvisionerTest {
     @Test
     void provisionExistingWithDifferentParams() {
         EventStoreProvisioner eventStoreProvisioner = EventStoreProvisioner.builder()
-                .eventStore(ESID, EventStoreProvisioner.DataFormat.PROTOBUF)
+                .eventStore(ESID, EventStoreProvisioner.DataFormat.PROTOBUF, BACKEND)
                 .client(client)
                 .build();
 
@@ -71,7 +72,7 @@ class EventStoreProvisionerTest {
     @Test
     void provisionNew() {
         EventStoreProvisioner eventStoreProvisioner = EventStoreProvisioner.builder()
-                .eventStore(ESID, EventStoreProvisioner.DataFormat.PROTOBUF)
+                .eventStore(ESID, EventStoreProvisioner.DataFormat.PROTOBUF, BACKEND)
                 .client(client)
                 .build();
 
@@ -88,7 +89,7 @@ class EventStoreProvisionerTest {
     @Test
     void provisionAgainstNonExistingBackendShouldFail() {
         EventStoreProvisioner eventStoreProvisioner = EventStoreProvisioner.builder()
-                .eventStore(ESID, EventStoreProvisioner.DataFormat.PROTOBUF)
+                .eventStore(ESID, EventStoreProvisioner.DataFormat.PROTOBUF, BACKEND)
                 .client(client)
                 .build();
 

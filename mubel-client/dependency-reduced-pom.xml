@@ -65,13 +65,13 @@
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-netty-shaded</artifactId>
-      <version>1.66.0</version>
+      <version>1.68.1</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-      <version>1.5.7</version>
+      <version>1.5.11</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>
@@ -83,7 +83,7 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
-      <version>5.10.3</version>
+      <version>5.10.5</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>

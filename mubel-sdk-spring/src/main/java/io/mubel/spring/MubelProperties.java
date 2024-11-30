@@ -2,43 +2,24 @@ package io.mubel.spring;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.Objects;
+
+/**
+ * @param address            The mubel address to connect to.
+ * @param eventStoreId       The event store id to use.
+ * @param storageBackendName The storage backend name to connect to
+ * @param idGenerator        The id generation strategy to use. Default ORDERED.
+ */
 @ConfigurationProperties(prefix = "mubel")
-public class MubelProperties {
-    /**
-     * The mubel address to connect to.
-     */
-    private String address;
-    /**
-     * The event store id to use.
-     */
-    private String eventStoreId;
-    /**
-     * The id generation strategy to use. Default ORDERED.
-     */
-    private IdGenerationStrategy idGenerator = IdGenerationStrategy.ORDERED;
+public record MubelProperties(
+        String address,
+        String eventStoreId,
+        String storageBackendName,
+        IdGenerationStrategy idGenerator
+) {
 
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public String getEventStoreId() {
-        return eventStoreId;
-    }
-
-    public void setEventStoreId(String eventStoreId) {
-        this.eventStoreId = eventStoreId;
-    }
-
-    public IdGenerationStrategy getIdGenerator() {
-        return idGenerator;
-    }
-
-    public void setIdGenerator(IdGenerationStrategy idGenerator) {
-        this.idGenerator = idGenerator;
+    public MubelProperties {
+        idGenerator = Objects.requireNonNullElse(idGenerator, IdGenerationStrategy.ORDERED);
     }
 
     public enum IdGenerationStrategy {

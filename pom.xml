@@ -11,10 +11,10 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <grpc.version>1.66.0</grpc.version>
-        <protobuf.version>4.28.0</protobuf.version>
-        <protoc.version>4.28.0</protoc.version>
-        <junit-jupiter.version>5.10.0</junit-jupiter.version>
+        <grpc.version>1.68.1</grpc.version>
+        <protobuf.version>4.28.3</protobuf.version>
+        <protoc.version>4.28.3</protoc.version>
+        <junit-jupiter.version>5.11.3</junit-jupiter.version>
     </properties>
 
     <dependencyManagement>
@@ -27,7 +27,7 @@
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.3.3</version>
+                <version>3.3.5</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>

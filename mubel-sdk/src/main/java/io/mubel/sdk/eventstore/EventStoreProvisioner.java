@@ -48,24 +48,19 @@ public class EventStoreProvisioner {
         return pp -> ProvisionEventStoreRequest.newBuilder()
                 .setEsid(pp.eventStoreId())
                 .setDataFormat(mapDataFormat(pp.dataFormat()))
+                .setStorageBackendName(pp.storageBackendName())
                 .build();
     }
 
     private static boolean verifyParams(ProvisionParams pp, Map<String, EventStoreDetails> byEsid, Set<String> backends) {
         if (!byEsid.containsKey(pp.eventStoreId())) {
-            final var parts = pp.eventStoreId().split(":");
-            final var namespace = parts[0];
             if (backends.isEmpty()) {
                 throw new MubelConfigurationException("No backends available");
             }
-            if (!backends.contains(namespace)) {
+            if (!backends.contains(pp.storageBackendName())) {
                 final var backendString = String.join(", ", backends);
-                final var exampleEsid = backends.stream().findFirst()
-                        .map(ns -> ns + ":" + parts[1])
-                        .orElseThrow();
-
-                final var errorMessage = "Event store id: %s references non-existing backend. Available backends: [%s]. Example: %s"
-                        .formatted(pp.eventStoreId(), backendString, exampleEsid);
+                final var errorMessage = "%s is a non-existing backend. Available backends: [%s]"
+                        .formatted(pp.storageBackendName(), backendString);
                 throw new MubelConfigurationException(errorMessage);
             }
             return true;
@@ -102,8 +97,8 @@ public class EventStoreProvisioner {
             return this;
         }
 
-        public Builder eventStore(String eventStoreId, DataFormat dataFormat) {
-            return eventStore(new ProvisionParams(eventStoreId, dataFormat, true));
+        public Builder eventStore(String eventStoreId, DataFormat dataFormat, String storageBackendName) {
+            return eventStore(new ProvisionParams(eventStoreId, dataFormat, true, storageBackendName));
         }
 
         public Builder eventStore(ProvisionParams params) {
@@ -131,11 +126,13 @@ public class EventStoreProvisioner {
     public record ProvisionParams(
             String eventStoreId,
             DataFormat dataFormat,
-            boolean waitForOpen
+            boolean waitForOpen,
+            String storageBackendName
     ) {
         public ProvisionParams {
             eventStoreId = Constrains.validateEventStoreId(eventStoreId);
             dataFormat = Constrains.requireNonNull(dataFormat, "dataFormat");
+            storageBackendName = Constrains.requireNonNull(storageBackendName, "storageBackendName");
         }
     }
 

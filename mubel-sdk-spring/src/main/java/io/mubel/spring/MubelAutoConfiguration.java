@@ -73,7 +73,7 @@ public class MubelAutoConfiguration {
             MubelClient mubelClient
     ) {
         return DefaultEventStore.builder()
-                .eventStoreId(properties.getEventStoreId())
+                .eventStoreId(properties.eventStoreId())
                 .client(mubelClient)
                 .build();
     }
@@ -85,7 +85,7 @@ public class MubelAutoConfiguration {
             MubelProperties properties,
             MubelClient eventsClient) {
         return EventStoreProvisioner.builder()
-                .eventStore(properties.getEventStoreId(), EventStoreProvisioner.DataFormat.JSON)
+                .eventStore(properties.eventStoreId(), EventStoreProvisioner.DataFormat.JSON, properties.storageBackendName())
                 .client(eventsClient)
                 .build();
     }
@@ -94,7 +94,7 @@ public class MubelAutoConfiguration {
     @Lazy
     @ConditionalOnMissingBean
     public IdGenerator idGenerator(MubelProperties properties) {
-        if (properties.getIdGenerator() == MubelProperties.IdGenerationStrategy.ORDERED) {
+        if (properties.idGenerator() == MubelProperties.IdGenerationStrategy.ORDERED) {
             System.setProperty(Constants.ID_GENERATOR_TYPE_KEY, "ordered");
             return IdGenerator.timebasedGenerator();
         } else {
@@ -211,13 +211,11 @@ public class MubelAutoConfiguration {
     @ConditionalOnMissingBean
     public ExpiredDeadlineHandler expiredDeadlineHandler(
             List<ExpiredDeadlineConsumer> consumers,
-            Executor executor,
             MubelClient client,
             EventDataMapper eventDataMapper
     ) {
         return ExpiredDeadlineHandler.builder()
                 .consumers(consumers)
-                .executor(executor)
                 .client(client)
                 .eventDataMapper(eventDataMapper)
                 .build();
@@ -269,7 +267,7 @@ public class MubelAutoConfiguration {
 
         @Override
         public String getAddress() {
-            var address = this.properties.getAddress();
+            var address = this.properties.address();
             return (address != null) ? address : MubelConnectionDetails.super.getAddress();
         }
     }

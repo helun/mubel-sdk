@@ -7,9 +7,9 @@ import java.util.regex.Pattern;
 
 public class Constrains {
 
-    public final static Pattern ESID_PTRN = Pattern.compile("^[a-z][a-z0-9_-]{1,99}:[a-z][a-z0-9_-]{1,99}$");
+    public final static Pattern EVENT_TYPE_PTRN = Pattern.compile("^([A-Za-z0-9_-])+([\\.:/]?([A-Za-z0-9_-])*[\\$\\+]*([A-Za-z0-9_-])*)*$");
+    public final static Pattern ESID_PTRN = EVENT_TYPE_PTRN;
     public final static Pattern PROPERTY_PATH_PTRN = Pattern.compile("^([A-Za-z0-9_-])+(\\.?([A-Za-z0-9_-])*)*$");
-    public final static Pattern EVENT_TYPE_PTRN = Pattern.compile("^([A-Za-z0-9_-])+([.-_:]?([A-Za-z0-9_-])*)*$");
 
     public final static Pattern SAFE_STRING_PTRN = Pattern.compile("[A-Za-z0-9_-]{1,255}");
 
