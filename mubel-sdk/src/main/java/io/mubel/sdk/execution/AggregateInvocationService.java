@@ -107,7 +107,6 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
         if (result.isEmpty()) {
             return;
         }
-
         var exrb = ExecuteRequest.newBuilder();
         result.events(events -> {
             final var appendOp = eventDataMapper.toAppendOp(
@@ -140,8 +139,7 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
                         .build())
                 .build())
         );
-
-        eventStore.append(exrb.build());
+        eventStore.execute(exrb);
     }
 
     @SuppressWarnings("unchecked")

@@ -7,6 +7,6 @@ public class Constants {
 
     public static final String DEADLINE_NAME_METADATA_KEY = "dl.nm";
     public static final String ID_GENERATOR_TYPE_KEY = "mubel.id.generator";
-
-
+    
+    public static final long LONG_POLL_MAX_VALUE = 20;
 }

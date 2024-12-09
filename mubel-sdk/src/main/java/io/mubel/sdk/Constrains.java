@@ -7,11 +7,15 @@ import java.util.regex.Pattern;
 
 public class Constrains {
 
-    public final static Pattern EVENT_TYPE_PTRN = Pattern.compile("^([A-Za-z0-9_-])+([\\.:/]?([A-Za-z0-9_-])*[\\$\\+]*([A-Za-z0-9_-])*)*$");
-    public final static Pattern ESID_PTRN = EVENT_TYPE_PTRN;
-    public final static Pattern PROPERTY_PATH_PTRN = Pattern.compile("^([A-Za-z0-9_-])+(\\.?([A-Za-z0-9_-])*)*$");
-
-    public final static Pattern SAFE_STRING_PTRN = Pattern.compile("[A-Za-z0-9_-]{1,255}");
+    public static final String EVENT_TYPE_REGEXP = "^([A-Za-z0-9_-])+([\\.:/]?([A-Za-z0-9_-])*[\\$\\+]*([A-Za-z0-9_-])*)*$";
+    public static final Pattern EVENT_TYPE_PTRN = Pattern.compile(EVENT_TYPE_REGEXP);
+    public static final String ESID_REGEXP = EVENT_TYPE_REGEXP;
+    public static final Pattern ESID_PTRN = EVENT_TYPE_PTRN;
+    public static final Pattern PROPERTY_PATH_PTRN = Pattern.compile("^([A-Za-z0-9_-])+(\\.?([A-Za-z0-9_-])*)*$");
+    public static final String SAFE_STRING_REGEXP = "[A-Za-z0-9_-]{1,255}";
+    public static final Pattern SAFE_STRING_PTRN = Pattern.compile(SAFE_STRING_REGEXP);
+    public static final String ADDRESS_REGEXP = "^(?:(?:[a-zA-Z0-9-]+\\.)*[a-zA-Z0-9-]+|(?:\\d{1,3}\\.){3}\\d{1,3})(?::\\d{1,5})?$";
+    public static final Pattern ADDRESS_PTRN = Pattern.compile(ADDRESS_REGEXP);
 
     public static String validateEventStoreId(String s) {
         return Utils.validate(

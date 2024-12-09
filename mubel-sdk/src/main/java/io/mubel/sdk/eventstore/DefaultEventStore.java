@@ -23,8 +23,15 @@ public class DefaultEventStore implements EventStore {
     }
 
     @Override
-    public void append(ExecuteRequest request) {
-        client.execute(request);
+    public void execute(ExecuteRequestOrBuilder request) {
+        if (request instanceof ExecuteRequest.Builder builder) {
+            builder.setEsid(eventStoreId);
+            client.execute(builder.build());
+        } else if (request instanceof ExecuteRequest exr) {
+            client.execute(exr);
+        } else {
+            throw new IllegalArgumentException("cannot handle request class " + request.getClass());
+        }
     }
 
     @Override
@@ -86,7 +93,7 @@ public class DefaultEventStore implements EventStore {
             return Utils.validate(
                     nn,
                     Constrains.ESID_PTRN,
-                    () -> new MubelConfigurationException("Event store id must match <namespace>:<event store name> pattern %s".formatted(Constrains.ESID_PTRN))
+                    () -> new MubelConfigurationException("Event store id must match pattern %s".formatted(Constrains.ESID_PTRN))
             );
         }
     }

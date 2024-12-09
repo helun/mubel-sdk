@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.service.connection.ConnectionDetai
 public interface MubelConnectionDetails extends ConnectionDetails {
 
     default String getAddress() {
-        return "localhost:9898";
+        return "localhost:9090";
     }
 
 }

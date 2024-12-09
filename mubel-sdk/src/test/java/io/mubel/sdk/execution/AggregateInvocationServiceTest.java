@@ -2,7 +2,7 @@ package io.mubel.sdk.execution;
 
 import com.google.protobuf.ByteString;
 import io.mubel.api.grpc.v1.events.EventData;
-import io.mubel.api.grpc.v1.events.ExecuteRequest;
+import io.mubel.api.grpc.v1.events.ExecuteRequestOrBuilder;
 import io.mubel.sdk.EventDataMapper;
 import io.mubel.sdk.EventNamingStrategy;
 import io.mubel.sdk.EventTypeRegistry;
@@ -60,7 +60,7 @@ class AggregateInvocationServiceTest {
                 .hasSize(1)
                 .first()
                 .satisfies(event -> assertThat(event).isInstanceOf(TestEvents.EventA.class));
-        verify(eventStore).append(ArgumentMatchers.any(ExecuteRequest.class));
+        verify(eventStore).execute(ArgumentMatchers.any(ExecuteRequestOrBuilder.class));
     }
 
     private TestAggregateInvocationService getService() {
@@ -75,7 +75,7 @@ class AggregateInvocationServiceTest {
         assertThat(result.newEventCount()).isEqualTo(1);
         assertThat(result.newVersion()).isEqualTo(0);
         assertThat(result.oldVersion()).isEqualTo(-1);
-        verify(eventStore).append(ArgumentMatchers.any(ExecuteRequest.class));
+        verify(eventStore).execute(ArgumentMatchers.any(ExecuteRequestOrBuilder.class));
     }
 
     @Test
@@ -130,7 +130,7 @@ class AggregateInvocationServiceTest {
         final var existing = setupExistingStream();
         final var service = getService();
         service.deadlineExpired(new ExpiredDeadline(UUID.fromString(existing.getStreamId()), "", Map.of(), Instant.now()));
-        verify(eventStore).append(ArgumentMatchers.any(ExecuteRequest.class));
+        verify(eventStore).execute(ArgumentMatchers.any(ExecuteRequestOrBuilder.class));
     }
 
     private static AbstractIntegerAssert<?> assertState(TestAggregate aggregate) {

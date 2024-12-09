@@ -2,7 +2,7 @@ package io.mubel.sdk.eventstore;
 
 
 import io.mubel.api.grpc.v1.events.EventData;
-import io.mubel.api.grpc.v1.events.ExecuteRequest;
+import io.mubel.api.grpc.v1.events.ExecuteRequestOrBuilder;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ public interface EventStore {
      *
      * @param appendRequest
      */
-    void append(ExecuteRequest appendRequest);
+    void execute(ExecuteRequestOrBuilder appendRequest);
 
     /**
      * @param streamId The stream id of the aggregate to get events for.

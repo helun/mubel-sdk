@@ -210,11 +210,13 @@ public class MubelAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public ExpiredDeadlineHandler expiredDeadlineHandler(
+            MubelProperties properties,
             List<ExpiredDeadlineConsumer> consumers,
             MubelClient client,
             EventDataMapper eventDataMapper
     ) {
         return ExpiredDeadlineHandler.builder()
+                .esid(properties.eventStoreId())
                 .consumers(consumers)
                 .client(client)
                 .eventDataMapper(eventDataMapper)

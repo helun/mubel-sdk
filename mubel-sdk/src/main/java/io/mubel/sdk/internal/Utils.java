@@ -50,6 +50,13 @@ public final class Utils {
         return input;
     }
 
+    public static long assertMaxValue(long input, long maxValue, Function<Long, ? extends RuntimeException> exceptionSupplier) {
+        if (input > maxValue) {
+            throw exceptionSupplier.apply(input);
+        }
+        return input;
+    }
+
     public static <T> T requireNonNull(T input, Supplier<? extends RuntimeException> exceptionSupplier) {
         if (input == null) {
             throw exceptionSupplier.get();
