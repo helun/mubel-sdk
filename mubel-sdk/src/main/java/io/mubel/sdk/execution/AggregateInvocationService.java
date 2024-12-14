@@ -12,8 +12,8 @@ import io.mubel.sdk.execution.internal.CommandExecutor;
 import io.mubel.sdk.execution.internal.InvocationContext;
 import io.mubel.sdk.scheduled.ExpiredDeadline;
 import io.mubel.sdk.scheduled.ExpiredDeadlineConsumer;
+import reactor.core.publisher.Flux;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,9 +40,9 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
         final var nnStreamId = parseStreamId(streamId);
         final var nnCommand = requireNonNull(command, "command may not be null");
         final var ctx = InvocationContext.create(nnStreamId);
-        final var existingEvents = getExistingEvents(nnStreamId, ctx);
-        final int oldVersion = ctx.currentVersion();
+        var existingEvents = getExistingEvents(nnStreamId, ctx);
         final var handlerResult = commandExecutor.execute(existingEvents, nnCommand);
+        final int oldVersion = ctx.currentVersion();
         applyResult(ctx, handlerResult);
         final int newVersion = ctx.currentVersion();
         return new CommandResult<>(
@@ -54,7 +54,6 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
         );
     }
 
-
     @Override
     public void deadlineExpired(ExpiredDeadline expiredDeadline) {
         final var nnStreamId = parseStreamId(expiredDeadline.targetEntityId());
@@ -65,23 +64,20 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
     }
 
     public T getState(UUID streamId) {
-        final var nnStreamId = parseStreamId(streamId);
-        final var ctx = InvocationContext.create(nnStreamId);
-        final var existingEvents = getExistingEvents(nnStreamId, ctx);
-        if (existingEvents.isEmpty()) {
-            throw new EventStreamNotFoundException("stream id: %s not found".formatted(streamId));
-        }
-        return commandExecutor.getState(existingEvents);
+        return findState(streamId).orElseThrow(() -> new EventStreamNotFoundException(streamId));
     }
 
     public T getState(UUID streamId, int version) {
         final var nnStreamId = parseStreamId(streamId);
         final var ctx = InvocationContext.create(nnStreamId);
-        final var existingEvents = getExistingEvents(nnStreamId, version, ctx);
-        if (existingEvents.isEmpty()) {
-            throw new EventStreamNotFoundException("stream id: %s not found".formatted(streamId));
-        }
-        return commandExecutor.getState(existingEvents);
+        return commandExecutor.getState(getExistingEvents(nnStreamId, version, ctx))
+                .orElseThrow(() -> new EventStreamNotFoundException(streamId));
+    }
+
+    public Optional<T> findState(UUID streamId) {
+        final var nnStreamId = parseStreamId(streamId);
+        final var ctx = InvocationContext.create(nnStreamId);
+        return commandExecutor.getState(getExistingEvents(nnStreamId, ctx));
     }
 
     @Override
@@ -91,16 +87,6 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
 
     private static String parseStreamId(UUID streamId) {
         return requireNonNull(streamId, "streamId may not be null").toString();
-    }
-
-    public Optional<T> findState(UUID streamId) {
-        final var nnStreamId = parseStreamId(streamId);
-        final var ctx = InvocationContext.create(nnStreamId);
-        final var existingEvents = getExistingEvents(nnStreamId, ctx);
-        if (existingEvents.isEmpty()) {
-            return Optional.empty();
-        }
-        return Optional.of(commandExecutor.getState(existingEvents));
     }
 
     private void applyResult(InvocationContext ctx, HandlerResult<E> result) {
@@ -142,20 +128,19 @@ public class AggregateInvocationService<T, E, C> implements ExpiredDeadlineConsu
         eventStore.execute(exrb);
     }
 
-    @SuppressWarnings("unchecked")
-    private List<E> getExistingEvents(String streamId, InvocationContext ctx) {
-        return (List<E>) eventDataMapper.fromEventData(
-                eventStore.get(streamId),
-                ed -> ctx.applyRevision(ed.getRevision())
-        );
+    private Flux<E> getExistingEvents(String streamId, InvocationContext ctx) {
+        return (Flux<E>) eventStore.getAsync(streamId)
+                .doOnNext(ed -> {
+                    ctx.applyRevision(ed.getRevision());
+                })
+                .map(eventDataMapper::fromEventData);
     }
 
     @SuppressWarnings("unchecked")
-    private List<E> getExistingEvents(String streamId, int version, InvocationContext ctx) {
-        return (List<E>) eventDataMapper.fromEventData(
-                eventStore.get(streamId, version),
-                ed -> ctx.applyRevision(ed.getRevision())
-        );
+    private Flux<E> getExistingEvents(String streamId, int version, InvocationContext ctx) {
+        return (Flux<E>) eventStore.getAsync(streamId, version)
+                .doOnNext(ed -> ctx.applyRevision(ed.getRevision()))
+                .map(eventDataMapper::fromEventData);
     }
 
 }

@@ -3,6 +3,7 @@ package io.mubel.sdk.execution;
 import com.google.protobuf.ByteString;
 import io.mubel.api.grpc.v1.events.EventData;
 import io.mubel.api.grpc.v1.events.ExecuteRequestOrBuilder;
+import io.mubel.client.exceptions.MubelClientException;
 import io.mubel.sdk.EventDataMapper;
 import io.mubel.sdk.EventNamingStrategy;
 import io.mubel.sdk.EventTypeRegistry;
@@ -10,6 +11,7 @@ import io.mubel.sdk.IdGenerator;
 import io.mubel.sdk.codec.JacksonJsonEventDataCodec;
 import io.mubel.sdk.eventstore.EventStore;
 import io.mubel.sdk.exceptions.EventStreamNotFoundException;
+import io.mubel.sdk.exceptions.MubelExecutionException;
 import io.mubel.sdk.fixtures.TestAggregate;
 import io.mubel.sdk.fixtures.TestCommands;
 import io.mubel.sdk.fixtures.TestEvents;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
@@ -133,6 +136,22 @@ class AggregateInvocationServiceTest {
         verify(eventStore).execute(ArgumentMatchers.any(ExecuteRequestOrBuilder.class));
     }
 
+    @Test
+    void submit_fails() {
+        setupFailingStream();
+        final var service = getService();
+        assertThatThrownBy(() -> service.submit(UUID.randomUUID(), new TestCommands.CommandA("value")))
+                .isInstanceOf(MubelExecutionException.class);
+    }
+
+    @Test
+    void findState_fails() {
+        setupFailingStream();
+        final var service = getService();
+        assertThatThrownBy(() -> service.findState(UUID.randomUUID()))
+                .isInstanceOf(MubelExecutionException.class);
+    }
+
     private static AbstractIntegerAssert<?> assertState(TestAggregate aggregate) {
         return assertState(aggregate, 1);
     }
@@ -176,16 +195,26 @@ class AggregateInvocationServiceTest {
     }
 
     private void setupExistingStream(List<EventData> events) {
-        when(eventStore.get(ArgumentMatchers.anyString()))
-                .thenReturn(events);
+        //when(eventStore.get(ArgumentMatchers.anyString()))
+        //      .thenReturn(events);
+        when(eventStore.getAsync(ArgumentMatchers.anyString()))
+                .thenReturn(Flux.fromIterable(events));
     }
 
     private void setupExistingStream(List<EventData> events, int toVersion) {
-        when(eventStore.get(ArgumentMatchers.anyString(), ArgumentMatchers.eq(toVersion)))
-                .thenReturn(events);
+        //when(eventStore.get(ArgumentMatchers.anyString(), ArgumentMatchers.eq(toVersion)))
+        //.thenReturn(events);
+        when(eventStore.getAsync(ArgumentMatchers.anyString(), ArgumentMatchers.eq(toVersion)))
+                .thenReturn(Flux.fromIterable(events));
     }
 
     private void setupNonExistingStream() {
-        when(eventStore.get(ArgumentMatchers.anyString())).thenReturn(List.of());
+        //when(eventStore.get(ArgumentMatchers.anyString())).thenReturn(List.of());
+        when(eventStore.getAsync(ArgumentMatchers.anyString())).thenReturn(Flux.empty());
+    }
+
+    private void setupFailingStream() {
+        //when(eventStore.get(ArgumentMatchers.anyString())).thenReturn(List.of());
+        when(eventStore.getAsync(ArgumentMatchers.anyString())).thenReturn(Flux.error(new MubelClientException("some error")));
     }
 }

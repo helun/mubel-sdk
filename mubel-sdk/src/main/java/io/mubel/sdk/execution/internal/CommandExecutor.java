@@ -8,8 +8,11 @@ import io.mubel.sdk.execution.CommandDispatcher;
 import io.mubel.sdk.execution.DeadlineDispatcher;
 import io.mubel.sdk.execution.EventDispatcher;
 import io.mubel.sdk.scheduled.ExpiredDeadline;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
@@ -42,7 +45,21 @@ public class CommandExecutor<T, E, C> {
         }
     }
 
-    public HandlerResult<E> handleExpiredDeadline(List<E> existingEvents, ExpiredDeadline expiredDeadline) {
+    public HandlerResult<E> execute(Flux<E> existingEvents, C command) {
+        try {
+            final var aggregate = newAggregateInstance();
+            applyEventsToAggregate(aggregate, existingEvents);
+            final var handlerResult = executeCommand(command, aggregate);
+            applyEventsToAggregate(aggregate, handlerResult.events());
+            return handlerResult;
+        } catch (MubelException me) {
+            throw me;
+        } catch (Exception e) {
+            throw new MubelExecutionException(e);
+        }
+    }
+
+    public HandlerResult<E> handleExpiredDeadline(Flux<E> existingEvents, ExpiredDeadline expiredDeadline) {
         try {
             final var aggregate = newAggregateInstance();
             applyEventsToAggregate(aggregate, existingEvents);
@@ -54,11 +71,14 @@ public class CommandExecutor<T, E, C> {
         }
     }
 
-    public T getState(List<E> existingEvents) {
+    public Optional<T> getState(Flux<E> existingEvents) {
         try {
             final var aggregate = newAggregateInstance();
-            applyEventsToAggregate(aggregate, existingEvents);
-            return aggregate;
+            final var eventCount = applyEventsToAggregate(aggregate, existingEvents);
+            if (eventCount == 0) {
+                return Optional.empty();
+            }
+            return Optional.of(aggregate);
         } catch (MubelException me) {
             throw me;
         } catch (Exception e) {
@@ -87,5 +107,15 @@ public class CommandExecutor<T, E, C> {
         for (final var e : events) {
             eventDispatcher.accept(e);
         }
+    }
+
+    private int applyEventsToAggregate(T aggregate, Flux<? extends E> events) {
+        final var eventDispatcher = this.eventDispatcher.resolveEventHandler(aggregate);
+        var eventCounter = new AtomicInteger(0);
+        for (var e : events.toIterable()) {
+            eventDispatcher.accept(e);
+            eventCounter.incrementAndGet();
+        }
+        return eventCounter.get();
     }
 }

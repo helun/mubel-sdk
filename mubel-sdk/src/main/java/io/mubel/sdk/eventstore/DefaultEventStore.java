@@ -5,6 +5,7 @@ import io.mubel.client.MubelClient;
 import io.mubel.sdk.Constrains;
 import io.mubel.sdk.exceptions.MubelConfigurationException;
 import io.mubel.sdk.internal.Utils;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -63,6 +64,33 @@ public class DefaultEventStore implements EventStore {
                         .build()
         );
         return response.getEventList();
+    }
+
+    @Override
+    public Flux<EventData> getAsync(String streamId) {
+        return client.getEventStream(GetEventsRequest.newBuilder()
+                .setEsid(eventStoreId)
+                .setSelector(EventSelector.newBuilder()
+                        .setStream(StreamSelector.newBuilder()
+                                .setStreamId(streamId)
+                                .build())
+                        .build())
+                .build()
+        );
+    }
+
+    @Override
+    public Flux<EventData> getAsync(String streamId, int revision) {
+        return client.getEventStream(GetEventsRequest.newBuilder()
+                .setEsid(eventStoreId)
+                .setSelector(EventSelector.newBuilder()
+                        .setStream(StreamSelector.newBuilder()
+                                .setStreamId(streamId)
+                                .setFromRevision(revision)
+                                .build())
+                        .build())
+                .build()
+        );
     }
 
     public static class Builder {
