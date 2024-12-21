@@ -9,6 +9,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * A registry for event types.
+ *
+ * This registry is used to map event classes to event types and vice versa.
+ *
+ * The registry is built using a {@link Builder} and can be configured with additional {@link EventNamingStrategy} instances.
+ * The default strategy is {@link EventNamingStrategy#byClass()}.
+ * You can add multiple strategies to provide a fallback mechanism.
+ * 
+ * Strategies are evaluated in the order they were added.
+ * The first strategy that returns a non-null value for a given event class or type name is used.
+ */
 public final class EventTypeRegistry {
 
     private final Map<Class<?>, String> typeByClass = new ConcurrentHashMap<>();
@@ -59,9 +71,14 @@ public final class EventTypeRegistry {
         private final List<EventNamingStrategy> namingStrategies = new ArrayList<>();
 
         public Builder() {
-
+            namingStrategies.add(EventNamingStrategy.byClass());
         }
-
+        /**
+         * Adds a naming strategy to the registry.
+         *
+         * @param eventNamingStrategy The naming strategy to add.
+         * @return The builder.
+         */
         public Builder withNamingStrategy(io.mubel.sdk.EventNamingStrategy eventNamingStrategy) {
             namingStrategies.add(eventNamingStrategy);
             return this;

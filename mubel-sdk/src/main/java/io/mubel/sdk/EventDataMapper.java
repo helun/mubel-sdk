@@ -16,6 +16,11 @@ import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * A mapper for event data.
+ *
+ * This class is used to map event data to event classes and vice versa.
+ */
 public class EventDataMapper {
 
     private final EventDataCodec codec;
@@ -45,11 +50,24 @@ public class EventDataMapper {
         return decoded;
     }
 
+    /**
+     * Deserializes the event data.
+     *
+     * @param eventData The event data to deserialize.
+     * @return The deserialized event.
+     */
     public Object fromEventData(EventData eventData) {
         final var eventClass = eventTypeRegistry.getClassForType(eventData.getType());
         return codec.decode(eventData.getData().toByteArray(), eventClass);
     }
 
+    /**
+     * Maps a deadline to an ExpiredDeadline.
+     *
+     * @param deadline The deadline to map.
+     * @param timestamp The timestamp of the event.
+     * @return The expired deadline.
+     */
     @SuppressWarnings("unchecked")
     public ExpiredDeadline mapExpiredDeadline(io.mubel.api.grpc.v1.events.Deadline deadline, Instant timestamp) {
         final Map<String, String> attributes;
@@ -77,6 +95,14 @@ public class EventDataMapper {
         return events.stream().map(e -> fromEventData(e, eventDataConsumer)).toList();
     }
 
+    /**
+     * Creates an append operation for a list of events.
+     *
+     * @param streamId The stream id.
+     * @param events The events to append.
+     * @param versionSupplier The version supplier.
+     * @return The append operation.
+     */
     public Operation toAppendOp(String streamId, List<?> events, Supplier<Integer> versionSupplier) {
         final var builder = EventDataInput.newBuilder()
                 .setStreamId(requireNonNull(streamId, "streamId may not be null"));
@@ -90,16 +116,22 @@ public class EventDataMapper {
                 .build();
     }
 
+    /**
+     * Creates scheduled event operations for a list of scheduled events.
+     *
+     * @param entityReference The entity reference.
+     * @param input The scheduled events.
+     * @return The scheduled event operations.
+     */
     public <T> Iterable<Operation> toScheduledEventOps(EntityReference entityReference, List<HandlerResult.ScheduledEvent<T>> input) {
         if (input.isEmpty()) {
             return List.of();
         }
         var eventDataBuilder = EventDataInput.newBuilder()
                 .setStreamId(entityReference.getId());
-        var opBuilder = Operation.newBuilder();
         return input
                 .stream()
-                .map(se -> opBuilder.setScheduleEvent(ScheduleEventOperation.newBuilder()
+                .map(se -> Operation.newBuilder().setScheduleEvent(ScheduleEventOperation.newBuilder()
                                 .setEvent(toAppendOp(eventDataBuilder, se.event(), () -> -1))
                                 .setPublishTime(clock.instant().plus(se.duration()).toEpochMilli())
                                 .build())
@@ -107,6 +139,13 @@ public class EventDataMapper {
                 ).toList();
     }
 
+    /**
+     * Creates deadline operations for a list of deadlines.
+     *
+     * @param entityReference The entity reference.
+     * @param deadlines The deadlines to create operations for.
+     * @return The deadline operations.
+     */
     public List<Operation> toDeadlineOps(EntityReference entityReference, List<Deadline> deadlines) {
         if (deadlines.isEmpty()) {
             return List.of();

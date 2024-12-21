@@ -3,6 +3,11 @@ package io.mubel.sdk;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * A batch of event messages.
+ *
+ * This class is used to represent a batch of event messages.
+ */
 public record EventMessageBatch<E>(
         List<EventMessage<E>> events,
         long lastSequenceNo

@@ -13,7 +13,7 @@ import static java.util.Objects.requireNonNullElse;
  * @param events          The events that will be published.
  * @param deadlines       The deadlines that will be stored for the future.
  * @param scheduledEvents The events that will be published in the future.
- * @param cancelIds       The ids of the deadlines or schelued events that will be cancelled.
+ * @param cancelIds       The id's of the deadlines or schelued events that will be cancelled.
  * @param <T>
  */
 public record HandlerResult<T>(

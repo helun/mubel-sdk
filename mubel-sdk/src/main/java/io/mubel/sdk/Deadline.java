@@ -15,6 +15,7 @@ import static java.util.Objects.requireNonNull;
  * @param id       the id of the deadline, refer to this id to cancel the deadline.
  * @param name     the name of the deadline, this is used to distinguish between deadlines for the same target entity.
  * @param duration the duration after which the deadline will be published.
+ * @param attributes the attributes of the deadline.
  */
 public record Deadline(
         UUID id,

@@ -6,6 +6,10 @@ import io.mubel.sdk.internal.Utils;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * A strategy for naming events.
+ * Multiple strategies can be used to provide a fallback mechanism.
+ */
 public abstract class EventNamingStrategy implements Comparable<EventNamingStrategy> {
 
     private final Integer order;
@@ -19,14 +23,39 @@ public abstract class EventNamingStrategy implements Comparable<EventNamingStrat
         return this.order.compareTo(o.order);
     }
 
+    /**
+     * Creates a naming strategy that uses the simple name of the event class.
+     *
+     * This strategy is convenient as it is automatic, but you may run into naming conflicts if you have multiple event classes with the same simple name.
+     * And the event type name will be coupled to your classes. Beware of this when refactoring your code.
+     *
+     * @param eventClasses The event classes.
+     * @return The naming strategy.
+     */
     public static EventNamingStrategy byClassSimpleName(Class<?>... eventClasses) {
         return new ClassSimpleNameStrategy(Arrays.asList(eventClasses));
     }
 
+    /**
+     * Creates a naming strategy that uses the fully qualified class name of the event.
+     * 
+     * This strategy is convenient as it is automatic, but your event names will be long and coupled to your class structure.
+     * This strategy has the same drawbacks as the {@link #byClassSimpleName(Class[])} strategy.
+     *
+     * @return The naming strategy.
+     */
     public static EventNamingStrategy byClass() {
         return new ByClassNameStrategy();
     }
 
+    /**
+     * Creates a naming strategy that uses a map of event types to event classes.
+     *
+     * This strategy provides the most flexibility, but requires the most work to configure.
+     * 
+     * @param mappings The map of event types to event classes.
+     * @return The naming strategy.
+     */
     public static EventNamingStrategy mapped(Map<String, Class<?>> mappings) {
         return new MappedNamingStrategy(mappings);
     }
